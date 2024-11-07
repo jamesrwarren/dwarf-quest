@@ -26,13 +26,15 @@ struct GameConfig {
     }
 
     // Configuration settings as public members
-    std::size_t screen_height = 600;
-    std::size_t screen_width = 900;
+    std::size_t screen_height = 800;
+    std::size_t screen_width = 1200;
     
     const int num_rows = 20;
     const int num_columns = 30;
     const int grid_cell_height = screen_height / num_rows;
     const int grid_cell_width = screen_width / num_columns;
+    const int target_fps = 20;               
+    const int frame_delay = 1000 / target_fps;
 
     // Delete copy constructor and assignment operator to enforce singleton
     GameConfig(const GameConfig&) = delete;
@@ -665,11 +667,11 @@ void load_map(const std::string& filename, entt::registry& registry, SDL_Rendere
 
                 // Load texture based on tile type
                 if (tile == 'd') {
-                    sprite.texture = IMG_LoadTexture(renderer, "dirt.jpeg");
+                    sprite.texture = IMG_LoadTexture(renderer, "images/dirt.jpeg");
                     registry.emplace<collidable_component>(entity);
                     std::cout << "Loaded DIRT" << std::endl;
                 } else if (tile == 'g') {
-                    sprite.texture = IMG_LoadTexture(renderer, "grass.png");
+                    sprite.texture = IMG_LoadTexture(renderer, "images/grass.png");
                     std::cout << "Loaded GRASS" << std::endl;
                 }
 
@@ -709,7 +711,7 @@ class game
 
             m_is_running = true;
 
-            load_map("map.txt", m_registry, m_renderer);
+            load_map("config/map.txt", m_registry, m_renderer);
             m_collision_system.load_static_entities(m_registry);
         }
         ~game()

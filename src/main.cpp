@@ -1,34 +1,31 @@
 #include "game.hpp"
 
 int main(int argc, char* argv[]) 
-{
-    const int target_fps = 20;               
-    const int frame_delay = 1000 / target_fps;
+{             
+    const int frame_delay = cwt::GameConfig::instance().frame_delay;
 
-    const int screen_width = 900;
-    const int screen_height = 600;
-    const char* bird_path = "bird.png";
-    const int player_width = screen_width / 30;
-    const int player_height = screen_height / 20;
+    const char* goblin_path = "images/goblin.png";
+    const char* dwarf_path = "images/dwarf.png";
+    const int player_height = cwt::GameConfig::instance().grid_cell_height;
+    const int player_width = cwt::GameConfig::instance().grid_cell_width;
     Uint32 now = SDL_GetTicks();
     cwt::game game;
     
     auto player_character = game.get_registry().create();
     game.get_registry().emplace<cwt::player_component>(player_character);
     game.get_registry().emplace<cwt::sprite_component>(player_character, 
-        SDL_Rect{0, 0, 300, 230}, 
-        SDL_Rect{10, 10, player_width, player_height}, 
-        IMG_LoadTexture(game.get_renderer(), bird_path)
+        SDL_Rect{0, 0, 1536, 1300}, 
+        SDL_Rect{0, 0, player_width, player_height}, 
+        IMG_LoadTexture(game.get_renderer(), dwarf_path)
     );
     game.get_registry().emplace<cwt::transform_component>(player_character, 10, 10, 0, 0);
     game.get_registry().emplace<cwt::collision_detection_component>(player_character);
     
-
     auto enemy_character = game.get_registry().create();
     game.get_registry().emplace<cwt::sprite_component>(enemy_character, 
-        SDL_Rect{0, 0, 300, 230}, 
+        SDL_Rect{0, 0, 3768, 3556}, 
         SDL_Rect{0, 0, player_width, player_height}, 
-        IMG_LoadTexture(game.get_renderer(), bird_path)
+        IMG_LoadTexture(game.get_renderer(), goblin_path)
     );
     game.get_registry().emplace<cwt::transform_component>(enemy_character, 10, 500, 0, 0);
     game.get_registry().emplace<cwt::aquire_target_component>(enemy_character);
@@ -38,9 +35,9 @@ int main(int argc, char* argv[])
 
     auto enemy_character2 = game.get_registry().create();
     game.get_registry().emplace<cwt::sprite_component>(enemy_character2, 
-        SDL_Rect{0, 0, 300, 230}, 
+        SDL_Rect{0, 0, 3768, 3556}, 
         SDL_Rect{0, 0, player_width, player_height}, 
-        IMG_LoadTexture(game.get_renderer(), bird_path)
+        IMG_LoadTexture(game.get_renderer(), goblin_path)
     );
     game.get_registry().emplace<cwt::transform_component>(enemy_character2, 200, 500, 0, 0);
     game.get_registry().emplace<cwt::aquire_target_component>(enemy_character2);
@@ -49,9 +46,9 @@ int main(int argc, char* argv[])
 
     auto enemy_character3 = game.get_registry().create();
     game.get_registry().emplace<cwt::sprite_component>(enemy_character3, 
-        SDL_Rect{0, 0, 300, 230}, 
+        SDL_Rect{0, 0, 3768, 3556}, 
         SDL_Rect{0, 0, player_width, player_height}, 
-        IMG_LoadTexture(game.get_renderer(), bird_path)
+        IMG_LoadTexture(game.get_renderer(), goblin_path)
     );
     game.get_registry().emplace<cwt::transform_component>(enemy_character3, 300, 500, 0, 0);
     game.get_registry().emplace<cwt::aquire_target_component>(enemy_character3);
@@ -60,9 +57,9 @@ int main(int argc, char* argv[])
 
     auto enemy_character4 = game.get_registry().create();
     game.get_registry().emplace<cwt::sprite_component>(enemy_character4, 
-        SDL_Rect{0, 0, 300, 230}, 
+        SDL_Rect{0, 0, 3768, 3556}, 
         SDL_Rect{0, 0, player_width, player_height}, 
-        IMG_LoadTexture(game.get_renderer(), bird_path)
+        IMG_LoadTexture(game.get_renderer(), goblin_path)
     );
     game.get_registry().emplace<cwt::transform_component>(enemy_character4, 400, 500, 0, 0);
     game.get_registry().emplace<cwt::aquire_target_component>(enemy_character4);

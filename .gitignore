@@ -1,6 +1,2 @@
 .vscode
-build
-build*
-*.note
-*.cmd
-bird.hpp
+dwarf-quest
