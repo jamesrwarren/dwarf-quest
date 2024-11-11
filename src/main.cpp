@@ -1,70 +1,77 @@
 #include "game.hpp"
 
+entt::entity create_player(cwt::game &game, const char *texture_path, int x, int y) {
+    auto player_entity = game.get_registry().create();
+    int player_width = cwt::GameConfig::instance().grid_cell_width;
+    int player_height = cwt::GameConfig::instance().grid_cell_height;
+
+    game.get_registry().emplace<cwt::player_component>(player_entity);
+    game.get_registry().emplace<cwt::sprite_component>(player_entity, 
+        SDL_Rect{0, 0, 1536, 1300}, 
+        SDL_Rect{x, y, player_width, player_height}, 
+        IMG_LoadTexture(game.get_renderer(), texture_path)
+    );
+    game.get_registry().emplace<cwt::transform_component>(player_entity, x, y, 0, 0);
+    game.get_registry().emplace<cwt::collision_detection_component>(player_entity);
+
+    return player_entity;
+}
+
+entt::entity create_player_animated(cwt::game &game, const char *texture_path, int x, int y) {
+    auto player_entity = game.get_registry().create();
+    int player_width = cwt::GameConfig::instance().grid_cell_width;
+    int player_height = cwt::GameConfig::instance().grid_cell_height;
+
+    game.get_registry().emplace<cwt::player_component>(player_entity);
+    game.get_registry().emplace<cwt::sprite_component>(player_entity, 
+        SDL_Rect{0, 0, 76, 100}, 
+        SDL_Rect{x, y, player_width, player_height}, 
+        IMG_LoadTexture(game.get_renderer(), texture_path)
+    );
+    game.get_registry().emplace<cwt::sprite_animation_component>(player_entity, 1, 0, 0);
+    game.get_registry().emplace<cwt::transform_component>(player_entity, x, y, 0, 0);
+    game.get_registry().emplace<cwt::collision_detection_component>(player_entity);
+
+    return player_entity;
+}
+
+entt::entity create_enemy(cwt::game &game, const char *texture_path, int x, int y) {
+    auto enemy_entity = game.get_registry().create();
+    int enemy_width = cwt::GameConfig::instance().grid_cell_width;
+    int enemy_height = cwt::GameConfig::instance().grid_cell_height;
+
+    game.get_registry().emplace<cwt::sprite_component>(enemy_entity, 
+        SDL_Rect{0, 0, 3768, 3556}, 
+        SDL_Rect{x, y, enemy_width, enemy_height}, 
+        IMG_LoadTexture(game.get_renderer(), texture_path)
+    );
+    game.get_registry().emplace<cwt::transform_component>(enemy_entity, x, y, 0, 0);
+    game.get_registry().emplace<cwt::aquire_target_component>(enemy_entity);
+    game.get_registry().emplace<cwt::collision_detection_component>(enemy_entity);
+    game.get_registry().emplace<cwt::path_finding_component>(enemy_entity, SDL_GetTicks(), false);
+
+    return enemy_entity;
+}
+
 int main(int argc, char* argv[]) 
 {             
     const int frame_delay = cwt::GameConfig::instance().frame_delay;
 
-    const char* goblin_path = "images/goblin.png";
-    const char* dwarf_path = "images/dwarf.png";
     const int player_height = cwt::GameConfig::instance().grid_cell_height;
     const int player_width = cwt::GameConfig::instance().grid_cell_width;
-    Uint32 now = SDL_GetTicks();
     cwt::game game;
     
-    auto player_character = game.get_registry().create();
-    game.get_registry().emplace<cwt::player_component>(player_character);
-    game.get_registry().emplace<cwt::sprite_component>(player_character, 
-        SDL_Rect{0, 0, 1536, 1300}, 
-        SDL_Rect{0, 0, player_width, player_height}, 
-        IMG_LoadTexture(game.get_renderer(), dwarf_path)
-    );
-    game.get_registry().emplace<cwt::transform_component>(player_character, 10, 10, 0, 0);
-    game.get_registry().emplace<cwt::collision_detection_component>(player_character);
-    
-    auto enemy_character = game.get_registry().create();
-    game.get_registry().emplace<cwt::sprite_component>(enemy_character, 
-        SDL_Rect{0, 0, 3768, 3556}, 
-        SDL_Rect{0, 0, player_width, player_height}, 
-        IMG_LoadTexture(game.get_renderer(), goblin_path)
-    );
-    game.get_registry().emplace<cwt::transform_component>(enemy_character, 10, 500, 0, 0);
-    game.get_registry().emplace<cwt::aquire_target_component>(enemy_character);
-    game.get_registry().emplace<cwt::collision_detection_component>(enemy_character);
-    game.get_registry().emplace<cwt::path_finding_component>(enemy_character, now, false);
+    // Create player character
+    // const char* dwarf_path = "images/dwarf.png";
+    const char* player_path = "images/player_sprite_sheet.png";
+    auto player_character = create_player_animated(game, player_path, 10, 10);
 
-
-    auto enemy_character2 = game.get_registry().create();
-    game.get_registry().emplace<cwt::sprite_component>(enemy_character2, 
-        SDL_Rect{0, 0, 3768, 3556}, 
-        SDL_Rect{0, 0, player_width, player_height}, 
-        IMG_LoadTexture(game.get_renderer(), goblin_path)
-    );
-    game.get_registry().emplace<cwt::transform_component>(enemy_character2, 200, 500, 0, 0);
-    game.get_registry().emplace<cwt::aquire_target_component>(enemy_character2);
-    game.get_registry().emplace<cwt::collision_detection_component>(enemy_character2);
-    game.get_registry().emplace<cwt::path_finding_component>(enemy_character2, now, false);
-
-    auto enemy_character3 = game.get_registry().create();
-    game.get_registry().emplace<cwt::sprite_component>(enemy_character3, 
-        SDL_Rect{0, 0, 3768, 3556}, 
-        SDL_Rect{0, 0, player_width, player_height}, 
-        IMG_LoadTexture(game.get_renderer(), goblin_path)
-    );
-    game.get_registry().emplace<cwt::transform_component>(enemy_character3, 300, 500, 0, 0);
-    game.get_registry().emplace<cwt::aquire_target_component>(enemy_character3);
-    game.get_registry().emplace<cwt::collision_detection_component>(enemy_character3);
-    game.get_registry().emplace<cwt::path_finding_component>(enemy_character3, now, false);
-
-    auto enemy_character4 = game.get_registry().create();
-    game.get_registry().emplace<cwt::sprite_component>(enemy_character4, 
-        SDL_Rect{0, 0, 3768, 3556}, 
-        SDL_Rect{0, 0, player_width, player_height}, 
-        IMG_LoadTexture(game.get_renderer(), goblin_path)
-    );
-    game.get_registry().emplace<cwt::transform_component>(enemy_character4, 400, 500, 0, 0);
-    game.get_registry().emplace<cwt::aquire_target_component>(enemy_character4);
-    game.get_registry().emplace<cwt::collision_detection_component>(enemy_character4);
-    game.get_registry().emplace<cwt::path_finding_component>(enemy_character4, now, false);
+    // Create enemy characters
+    const char* goblin_path = "images/goblin.png";
+    create_enemy(game, goblin_path, 10, 500);
+    // create_enemy(game, goblin_path, 200, 500);
+    // create_enemy(game, goblin_path, 300, 500);
+    // create_enemy(game, goblin_path, 400, 500);
 
 
     while(game.is_running()) 

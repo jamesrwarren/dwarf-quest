@@ -76,14 +76,19 @@ struct transform_component{
     int vel_x, vel_y;   // Velocity
 };
 
+struct sprite_animation_component{
+    int sprite_direction; // down=0, right=1, left=2, up=3
+    int sprite_frame_count; // frames since last change
+    int sprite_selection_count; // which sprite from the sheet to choose
+};
+
 struct player_component{ };
 
 struct static_component{ };
 
 struct aquire_target_component { 
     entt::entity target_entt;
-    int target_x;
-    int target_y;
+    int target_x, target_y, player_x, player_y;
  };
 
 struct collidable_component{ };
@@ -151,7 +156,45 @@ struct transform_system
         auto view_transform = reg.view<transform_component>();
         view_transform.each([](transform_component &transform){
             transform.pos_x += transform.vel_x;
-            transform.pos_y += transform.vel_y;            
+            transform.pos_y += transform.vel_y;         
+        });
+    }
+};
+
+struct sprite_animation_system 
+{   
+    void update(entt::registry& reg)
+    {
+        auto view_transform = reg.view<sprite_animation_component, transform_component, sprite_component>();
+        view_transform.each([](sprite_animation_component &sprite_animation, transform_component &transform, sprite_component &sprite){
+            if (transform.vel_x == -1) {
+                sprite_animation.sprite_direction = 2; //left
+            } 
+            else if (transform.vel_x == 1) {
+                sprite_animation.sprite_direction = 1; //right
+            } 
+            else if (transform.vel_y == -1) {
+                sprite_animation.sprite_direction = 3; //down
+            } 
+            else if (transform.vel_y == 1) {
+                sprite_animation.sprite_direction = 0; //up
+            } else {
+                return; // standing still so exit lambda
+            } 
+
+            if (sprite_animation.sprite_frame_count < 5) {
+                sprite_animation.sprite_frame_count += 1;
+            } else {
+                sprite_animation.sprite_frame_count = 0;
+                if (sprite_animation.sprite_selection_count < 3) {
+                    sprite_animation.sprite_selection_count += 1;
+                } else {
+                    sprite_animation.sprite_selection_count = 0;
+                }
+            }
+
+            sprite.src.x = sprite.src.w * sprite_animation.sprite_selection_count;
+            sprite.src.y = sprite.src.h * sprite_animation.sprite_direction; 
         });
     }
 };
@@ -237,8 +280,11 @@ struct aquire_target_system
             // Update each enemy's velocity to move towards the player
             view_enemies.each([&](transform_component &enemy_transform, aquire_target_component &aquire_target) {
                 aquire_target.target_entt = player_entity;
-                aquire_target.target_x = player_transform->pos_x;
-                aquire_target.target_y = player_transform->pos_y;
+                aquire_target.player_x = player_transform->pos_x;
+                aquire_target.player_y = player_transform->pos_y;
+                aquire_target.target_x = aquire_target.player_x;
+                aquire_target.target_y = aquire_target.player_y;
+
             });
         }
     }
@@ -365,8 +411,15 @@ struct path_finding_system
                     path_finding.last_path_find_time = now;
                     updated_path_this_frame = true;
                 } 
-                aquire_target.target_x = path_finding.path[1].grid_x * GameConfig::instance().grid_cell_width;
-                aquire_target.target_y = path_finding.path[1].grid_y * GameConfig::instance().grid_cell_height;    
+
+                // When we get close to player just track player
+                if (std::size(path_finding.path) < 3) {
+                    aquire_target.target_x = aquire_target.player_x;
+                    aquire_target.target_y = aquire_target.player_y;
+                } else {
+                    aquire_target.target_x = path_finding.path[1].grid_x * GameConfig::instance().grid_cell_width;
+                    aquire_target.target_y = path_finding.path[1].grid_y * GameConfig::instance().grid_cell_height;
+                }  
             }
         });
     }
@@ -413,6 +466,8 @@ struct collision_system
             bool collision_detected = false;
             bool x_collision = true;
             bool y_collision = true;
+            bool all_x_collisions = false;
+            bool all_y_collisions = false;
 
             for (int dx = -2; dx <= 2; ++dx) {
                 for (int dy = -2; dy <= 2; ++dy) {
@@ -431,7 +486,6 @@ struct collision_system
                     }
 
                     // Check if the neighbor cell has any entities
-                    // if (grid_map.find(neighbor_cell) != grid_map.end()) {
                     for (entt::entity entity_collidable : cell_entities) {
                         // Skip self-collision check
                         if (entity == entity_collidable) continue;
@@ -456,20 +510,25 @@ struct collision_system
                                 );
                             }
                             collision_detected = true;
-                            break;  // Early exit if collision detected
+
+                            if (all_x_collisions || x_collision) {
+                                all_x_collisions = true;
+                            }
+
+                            if (all_y_collisions || y_collision) {
+                                all_y_collisions = true;
+                            }
                         }
                     }
-                    if (collision_detected) break;
                 }
-                if (collision_detected) break;
             }
 
             // If a collision was detected, revert the entity's velocity
             if (collision_detected) {
-                if (x_collision) {
+                if (all_x_collisions) {
                     transform_entity.vel_x = 0;
                 }
-                if (y_collision) {
+                if (all_y_collisions) {
                     transform_entity.vel_y = 0;
                 }
             }
@@ -550,7 +609,8 @@ struct logging_system
             auto view_enemies = reg.view<sprite_component, transform_component, path_finding_component, aquire_target_component>();
             view_enemies.each([&](entt::entity enemy_entity, sprite_component &enemy_sprite, transform_component &enemy_transform, path_finding_component &enemy_path_finding, aquire_target_component &enemy_targetting) {
                 std::cout << "Enemy ID: " << static_cast<uint32_t>(enemy_entity) << '\n'; 
-                std::cout << "Path from (" << enemy_sprite.grid_x << ", " << enemy_sprite.grid_y << ")" << "\n";
+                std::cout << "Path from (" << enemy_sprite.grid_x << ", " << enemy_sprite.grid_y << ")" << " of size " << std::size(enemy_path_finding.path) << "\n";
+                
                 for (const auto& node : enemy_path_finding.path) {
                     std::cout << "Node at (" << node.grid_x << ", " << node.grid_y << ") with f-cost: " << node.f_cost() << '\n';
                 }
@@ -745,10 +805,10 @@ class game
             m_player_movement_system.update(m_registry);
             m_aquire_target_system.update(m_registry);
             m_path_finding_system.update(m_registry);
-            
             m_enemy_movement_system.update(m_registry);
             m_collision_system.update(m_registry);           
             m_transform_system.update(m_registry);
+            m_sprite_animation_system.update(m_registry);
             m_sprite_system.update(m_registry);
             
             m_logging_system.update(m_registry, 3);          
@@ -761,7 +821,8 @@ class game
             m_sprite_system.render(m_registry, m_renderer);
             m_visual_logging_system.render(m_registry, m_renderer);
             SDL_RenderPresent(m_renderer);
-            m_performance_logging_system.stop();
+
+             m_performance_logging_system.stop();
         }
 
     private:
@@ -774,6 +835,7 @@ class game
         entt::registry m_registry;
 
         sprite_system m_sprite_system;
+        sprite_animation_system m_sprite_animation_system;
         transform_system m_transform_system;
         path_finding_system m_path_finding_system;
         aquire_target_system m_aquire_target_system;
