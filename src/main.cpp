@@ -31,6 +31,7 @@ entt::entity create_player_animated(cwt::game &game, const char *texture_path, i
     game.get_registry().emplace<cwt::sprite_animation_component>(player_entity, 1, 0, 0);
     game.get_registry().emplace<cwt::transform_component>(player_entity, x, y, 0, 0);
     game.get_registry().emplace<cwt::collision_detection_component>(player_entity);
+    game.get_registry().emplace<cwt::collidable_component>(player_entity);
 
     return player_entity;
 }
@@ -49,6 +50,7 @@ entt::entity create_enemy(cwt::game &game, const char *texture_path, int x, int 
     game.get_registry().emplace<cwt::aquire_target_component>(enemy_entity);
     game.get_registry().emplace<cwt::collision_detection_component>(enemy_entity);
     game.get_registry().emplace<cwt::path_finding_component>(enemy_entity, SDL_GetTicks(), false);
+    game.get_registry().emplace<cwt::collidable_component>(enemy_entity);
 
     return enemy_entity;
 }
