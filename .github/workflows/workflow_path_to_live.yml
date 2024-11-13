@@ -1,0 +1,59 @@
+name: "[Workflow] Create PRs"
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+
+on:
+  create:
+
+permissions:
+  id-token: none
+  actions: read
+  checks: read
+  contents: read  # Needed to list branches
+  deployments: none
+  issues: none
+  packages: none
+  pull-requests: write  # Needed to create PRs
+  repository-projects: none
+  security-events: none
+  statuses: none
+
+jobs:
+  create_prs:
+    runs-on: ubuntu-latest
+    name: Create PRs based on branches starting with 'foobar'
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Find branches starting with 'foobar' that don't have PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        id: find_branches
+        run: |
+          branches=$(git for-each-ref --format='%(refname:short)' refs/heads/ | grep '^foobar')
+          open_pr_branches=$(gh pr list --json headRefName --jq '.[] | .headRefName')
+
+          for branch in $branches; do
+            if [[ ! " $open_pr_branches " =~ " $branch " ]]; then
+              echo "$branch" >> branches_to_pr.txt
+            fi
+          done
+
+          if [ -f branches_to_pr.txt ]; then
+            echo "branches=$(cat branches_to_pr.txt | paste -s -d, -)" >> $GITHUB_ENV
+            echo ${branches}
+          else
+            echo "No branches to create PRs for."
+          fi
+
+      - name: Create pull requests for each branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        if: env.branches != ''
+        run: |
+          IFS=',' read -ra branch_array <<< "$branches"
+          for branch in "${branch_array[@]}"; do
+            gh pr create --base main --head "$branch" --title "Auto PR for $branch" --body "This PR was automatically created for the branch $branch."
+          done
