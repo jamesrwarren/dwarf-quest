@@ -46,12 +46,22 @@ private:
 };
 
 // Other Structs
+// struct Node {
+//     int grid_x;
+//     int grid_y;
+//     int g_cost;
+//     int h_cost;
+//     Node* parent;
+
+//     int f_cost() const { return g_cost + h_cost; }
+// };
+
 struct Node {
-    int grid_x;
-    int grid_y;
-    int g_cost;
-    int h_cost;
-    Node* parent;
+    int grid_x, grid_y;
+    int g_cost = 0;
+    int h_cost = 0;
+    bool visited = false;
+    Node* parent = nullptr;
 
     int f_cost() const { return g_cost + h_cost; }
 };
@@ -304,13 +314,16 @@ struct path_finding_system
         return abs(x1 - x2) + abs(y1 - y2);
     }
 
+    inline int get_index(int x, int y) {
+    return y * 100 + x;
+    }
+
     // A* algorithm
-    std::vector<Node> find_path(entt::registry& reg, int start_x, int start_y, int target_x, int target_y) {
+    std::vector<Node> find_path(entt::registry& reg, int start_x, int start_y, int target_x, int target_y, std::unordered_set<int> &collidable_positions) {
         std::priority_queue<Node*, std::vector<Node*>, CompareNode> open_set;
         std::unordered_map<int, Node> all_nodes;
-        std::unordered_map<int, bool> closed_set;
-
-        auto get_index = [](int x, int y) { return y * 100 + x; };  // Unique index for grid position
+        static const std::array<std::pair<int, int>, 4> neighbor_offsets = {{{0, 1}, {1, 0}, {0, -1}, {-1, 0}}};
+        int target_index = get_index(target_x, target_y);
 
         // Initialize start node
         Node* start_node = &all_nodes[get_index(start_x, start_y)];
@@ -320,11 +333,15 @@ struct path_finding_system
         start_node->h_cost =  path_finding_system::manhattan_distance(start_x, start_y, target_x, target_y);
         start_node->parent = nullptr;
         open_set.push(start_node);
+        
 
         // A* loop
         while (!open_set.empty()) {
             Node* current = open_set.top();
             open_set.pop();
+
+            if (current->visited) continue;
+            current->visited = true;
 
             // Check if reached the target and return reversed path back if we have
             if (current->grid_x == target_x && current->grid_y == target_y) {
@@ -337,34 +354,24 @@ struct path_finding_system
                 return path;
             }
 
-            closed_set[get_index(current->grid_x, current->grid_y)] = true;
-
             // Explore neighbors (does not do diagonals)
-            for (const auto& [dx, dy] : std::vector<std::pair<int, int>>{{0, 1}, {1, 0}, {0, -1}, {-1, 0}}) {
+            for (const auto& [dx, dy] : neighbor_offsets) {
                 int neighbor_x = current->grid_x + dx;
                 int neighbor_y = current->grid_y + dy;
 
                 int neighbor_index = get_index(neighbor_x, neighbor_y);
 
                 // Check if neighbor is within bounds or already in closed set
-                if (neighbor_x < 0 || neighbor_y < 0 || neighbor_x >= GameConfig::instance().num_columns || neighbor_y >= GameConfig::instance().num_rows || closed_set[neighbor_index]) {
+                if (neighbor_x < 0 || neighbor_y < 0 || neighbor_x >= GameConfig::instance().num_columns || neighbor_y >= GameConfig::instance().num_rows || all_nodes[neighbor_index].visited) {
                     continue;
                 }
 
-                // Check for collision and add collidables to closed set immediately
-                auto view_collidable_entities = reg.view<sprite_component, collidable_component>();
-                bool collision_detected = false;
-                // TODO - index this?
-                view_collidable_entities.each([&](sprite_component &sprite) {
-                    if (sprite.grid_x == neighbor_x && sprite.grid_y == neighbor_y) {
-                        collision_detected = true;
-                        return;
-                    }
-                });
 
-                if (collision_detected) {
-                    closed_set[neighbor_index] = true;  // Mark collidable as visited
-                    continue;
+                if (collidable_positions.count(neighbor_index) > 0) {
+                    if (target_index != neighbor_index) {
+                        all_nodes[neighbor_index].visited = true;
+                        continue;
+                    }
                 }
 
                 Node* neighbor = &all_nodes[neighbor_index];
@@ -388,6 +395,12 @@ struct path_finding_system
     void update(entt::registry& reg)
     {
         Uint32 now = SDL_GetTicks();
+        
+        std::unordered_set<int> collidable_positions;
+        auto view_collidable_entities = reg.view<sprite_component, collidable_component>();
+        view_collidable_entities.each([&](sprite_component &sprite) {
+            collidable_positions.insert(get_index(sprite.grid_x, sprite.grid_y));
+        });
         bool updated_path_this_frame = false;
         auto view_path_finding = reg.view<sprite_component, transform_component, path_finding_component, aquire_target_component>();
         view_path_finding.each([&](sprite_component &sprite, transform_component &transform, path_finding_component &path_finding, aquire_target_component &aquire_target) {           
@@ -400,14 +413,14 @@ struct path_finding_system
 
                 // Grab path on initial frame for all entities
                 if (!path_finding.initialised) {
-                    path_finding.path = path_finding_system::find_path(reg, sprite.grid_x, sprite.grid_y, target_sprite.grid_x, target_sprite.grid_y);
+                    path_finding.path = path_finding_system::find_path(reg, sprite.grid_x, sprite.grid_y, target_sprite.grid_x, target_sprite.grid_y, collidable_positions);
                     path_finding.initialised = true;
                 }
 
                 // Path finding is computationally expensive so 
                 Uint32 elapsed_time = now - path_finding.last_path_find_time;
                 if (elapsed_time >= (0.5 * 1000) && !updated_path_this_frame) {
-                    path_finding.path = path_finding_system::find_path(reg, sprite.grid_x, sprite.grid_y, target_sprite.grid_x, target_sprite.grid_y);
+                    path_finding.path = path_finding_system::find_path(reg, sprite.grid_x, sprite.grid_y, target_sprite.grid_x, target_sprite.grid_y, collidable_positions);
                     path_finding.last_path_find_time = now;
                     updated_path_this_frame = true;
                 } 
@@ -439,150 +452,106 @@ struct collision_system
         });
     }
 
+    void update_cell_entities (
+        sprite_component &sprite_entity, int &dx, int &dy, 
+        std::__1::unordered_map<std::__1::pair<int, int>, std::__1::vector<entt::entity>, cwt::pair_hash> &grid_map,
+        std::__1::vector<entt::entity> &cell_entities
+        ) 
+    {
+        cell_entities.clear();
+        std::pair<int, int> neighbor_cell = { sprite_entity.grid_x + dx, sprite_entity.grid_y + dy };
+
+        if (static_grid_map.find(neighbor_cell) != static_grid_map.end()) {
+            cell_entities = static_grid_map[neighbor_cell];
+        }
+
+        if (grid_map.find(neighbor_cell) != grid_map.end()) {
+            cell_entities.insert(
+                cell_entities.end(),                  // Insert at the end of cell_entities
+                grid_map[neighbor_cell].begin(),       // Start of grid_map vector
+                grid_map[neighbor_cell].end()          // End of grid_map vector
+            );
+        }
+    }
+
+    void check_collisions (
+        collidable_system &s_collidable, int &entity_proposed_x, int &entity_proposed_y,
+        sprite_component &sprite_entity, sprite_component &sprite_collidable, transform_component &transform_entity, 
+        bool &x_collision, bool &y_collision, bool &collision_detected, bool &all_x_collisions, bool &all_y_collisions
+    ) 
+    {
+        if (s_collidable.checkCollision(
+            entity_proposed_x, entity_proposed_y, sprite_entity.dst.w, sprite_entity.dst.h, 
+            sprite_collidable.dst.x, sprite_collidable.dst.y, sprite_collidable.dst.w, sprite_collidable.dst.h))
+        {
+            // Check separately for x and y collisions if moving diagonally
+            if (transform_entity.vel_x != 0 && transform_entity.vel_y != 0) {
+                x_collision = s_collidable.checkCollision(
+                    entity_proposed_x, transform_entity.pos_y, sprite_entity.dst.w, sprite_entity.dst.h, 
+                    sprite_collidable.dst.x, sprite_collidable.dst.y, sprite_collidable.dst.w, sprite_collidable.dst.h
+                );
+                y_collision = s_collidable.checkCollision(
+                    transform_entity.pos_x, entity_proposed_y, sprite_entity.dst.w, sprite_entity.dst.h, 
+                    sprite_collidable.dst.x, sprite_collidable.dst.y, sprite_collidable.dst.w, sprite_collidable.dst.h
+                );
+            }
+            collision_detected = true;
+
+            if (all_x_collisions || x_collision) {
+                all_x_collisions = true;
+            }
+
+            if (all_y_collisions || y_collision) {
+                all_y_collisions = true;
+            }
+        }
+    }
+
     void update(entt::registry& reg)
     {
-        collidable_system s_collidable;
-        auto view_collision = reg.view<sprite_component, collidable_component, transform_component>();
+        collidable_system s_collidable; // for access to methods in collidable system
+        std::unordered_map<std::pair<int, int>, std::vector<entt::entity>, pair_hash> grid_map; // Map to store entities by grid cell
+        std::vector<entt::entity> cell_entities; // temp vector to store collidable objects for each cell 
 
-        // Map to store entities by grid cell
-        std::unordered_map<std::pair<int, int>, std::vector<entt::entity>, pair_hash> grid_map;
-
-        // Fill the grid map with entities
-        view_collision.each([&](entt::entity entity, sprite_component &sprite, transform_component &transform) {
+        auto view_all_collidables = reg.view<sprite_component, collidable_component>();
+        auto view_non_static_collidables = reg.view<sprite_component, transform_component, collidable_component>();
+        view_non_static_collidables.each([&](entt::entity entity, sprite_component &sprite, transform_component &transform) {
             std::pair<int, int> cell = { sprite.grid_x, sprite.grid_y };
             grid_map[cell].push_back(entity);
         });
 
-        // Now, perform collision detection with nearby entities
-        auto view_entity = reg.view<transform_component, sprite_component, collision_detection_component>();
-        view_entity.each([&](entt::entity entity, transform_component &transform_entity, sprite_component &sprite_entity, collision_detection_component &collision_entity) {
-            // Create vector for this 
-            std::vector<entt::entity> cell_entities;
-            cell_entities.clear();
+        // Perform collision detection with nearby entities
+        auto view_entity = reg.view<sprite_component, transform_component, collision_detection_component>();
+        view_entity.each([&](entt::entity entity, sprite_component &sprite_entity, transform_component &transform_entity, collision_detection_component &collision_entity) {
             int entity_proposed_x = transform_entity.pos_x + transform_entity.vel_x;
             int entity_proposed_y = transform_entity.pos_y + transform_entity.vel_y;
 
-            // Only check the current cell and its neighbors
-            bool collision_detected = false;
-            bool x_collision = true;
-            bool y_collision = true;
-            bool all_x_collisions = false;
-            bool all_y_collisions = false;
+            bool collision_detected, all_x_collisions, all_y_collisions = false;
+            bool x_collision, y_collision = true;
 
-            for (int dx = -2; dx <= 2; ++dx) {
+            for (int dx = -2; dx <= 2; ++dx) { // Checks within two neighbouring squares
                 for (int dy = -2; dy <= 2; ++dy) {
-                    std::pair<int, int> neighbor_cell = { sprite_entity.grid_x + dx, sprite_entity.grid_y + dy };
+                    update_cell_entities (sprite_entity, dx, dy, grid_map, cell_entities);
 
-                    if (static_grid_map.find(neighbor_cell) != static_grid_map.end()) {
-                        cell_entities = static_grid_map[neighbor_cell];
-                    }
+                    for (entt::entity entity_collidable : cell_entities) { // Loop through entities in the cell
+                        if (entity == entity_collidable) continue; // Skip self-collision check
 
-                    if (grid_map.find(neighbor_cell) != grid_map.end()) {
-                        cell_entities.insert(
-                            cell_entities.end(),                  // Insert at the end of cell_entities
-                            grid_map[neighbor_cell].begin(),       // Start of grid_map vector
-                            grid_map[neighbor_cell].end()          // End of grid_map vector
-                        );
-                    }
-
-                    // Check if the neighbor cell has any entities
-                    for (entt::entity entity_collidable : cell_entities) {
-                        // Skip self-collision check
-                        if (entity == entity_collidable) continue;
-
-                        // Access the collidable entity's sprite_component
-                        sprite_component& sprite_collidable = view_collision.get<sprite_component>(entity_collidable);
+                        sprite_component &sprite_collidable = view_all_collidables.get<sprite_component>(entity_collidable);
 
                         // Check for collision
-                        if (s_collidable.checkCollision(
-                            entity_proposed_x, entity_proposed_y, sprite_entity.dst.w, sprite_entity.dst.h, 
-                            sprite_collidable.dst.x, sprite_collidable.dst.y, sprite_collidable.dst.w, sprite_collidable.dst.h))
-                        {
-                            // Check separately for x and y collisions if moving diagonally
-                            if (transform_entity.vel_x != 0 && transform_entity.vel_y != 0) {
-                                x_collision = s_collidable.checkCollision(
-                                    entity_proposed_x, transform_entity.pos_y, sprite_entity.dst.w, sprite_entity.dst.h, 
-                                    sprite_collidable.dst.x, sprite_collidable.dst.y, sprite_collidable.dst.w, sprite_collidable.dst.h
-                                );
-                                y_collision = s_collidable.checkCollision(
-                                    transform_entity.pos_x, entity_proposed_y, sprite_entity.dst.w, sprite_entity.dst.h, 
-                                    sprite_collidable.dst.x, sprite_collidable.dst.y, sprite_collidable.dst.w, sprite_collidable.dst.h
-                                );
-                            }
-                            collision_detected = true;
-
-                            if (all_x_collisions || x_collision) {
-                                all_x_collisions = true;
-                            }
-
-                            if (all_y_collisions || y_collision) {
-                                all_y_collisions = true;
-                            }
-                        }
+                        check_collisions(
+                            s_collidable, entity_proposed_x, entity_proposed_y, sprite_entity, sprite_collidable, 
+                            transform_entity, x_collision, y_collision, 
+                            collision_detected, all_x_collisions, all_y_collisions
+                        );
                     }
                 }
             }
 
-            // If a collision was detected, revert the entity's velocity
-            if (collision_detected) {
-                if (all_x_collisions) {
-                    transform_entity.vel_x = 0;
-                }
-                if (all_y_collisions) {
-                    transform_entity.vel_y = 0;
-                }
+            if (collision_detected) { // If a collision was detected, revert the entity's velocity
+                if (all_x_collisions) { transform_entity.vel_x = 0; }
+                if (all_y_collisions) { transform_entity.vel_y = 0; }
             }
-        });
-    }
-
-    void update_basic(entt::registry& reg)
-    {
-        collidable_system s_collidable;
-        auto view_collision = reg.view<sprite_component, collidable_component>();
-
-        auto view_entity = reg.view<transform_component, sprite_component, collision_detection_component>();
-        view_entity.each([&s_collidable, &view_collision](entt::entity entity, transform_component &transform_entity, sprite_component &sprite_entity, collision_detection_component &collision_entity) {
-            int entity_proposed_x = transform_entity.pos_x + transform_entity.vel_x;
-            int entity_proposed_y = transform_entity.pos_y + transform_entity.vel_y;
-
-            // Collision detection
-            bool collision_detected = false;
-            bool x_collision = true;
-            bool y_collision = true;
-            view_collision.each([&](entt::entity entity_collidable, sprite_component &sprite_collidable) {
-                if (entity == entity_collidable) return; // Skip self-collision check
-
-                // Check for collision
-                if (s_collidable.checkCollision(
-                    entity_proposed_x, entity_proposed_y, sprite_entity.dst.w, sprite_entity.dst.h, 
-                    sprite_collidable.dst.x, sprite_collidable.dst.y, sprite_collidable.dst.w, sprite_collidable.dst.h))
-                {
-                    if (transform_entity.vel_x != 0 && transform_entity.vel_y != 0) {
-
-                        x_collision = s_collidable.checkCollision(
-                            entity_proposed_x, transform_entity.pos_y, sprite_entity.dst.w, sprite_entity.dst.h, 
-                            sprite_collidable.dst.x, sprite_collidable.dst.y, sprite_collidable.dst.w, sprite_collidable.dst.h
-                        );
-                        y_collision = s_collidable.checkCollision(
-                            transform_entity.pos_x, entity_proposed_y, sprite_entity.dst.w, sprite_entity.dst.h, 
-                            sprite_collidable.dst.x, sprite_collidable.dst.y, sprite_collidable.dst.w, sprite_collidable.dst.h
-                        );
-                    }
-                    collision_detected = true;
-                    return;  // Early exit if collision detected
-                }
-            });
-
-
-            // If a collision was detected, revert the entity's velocity
-            if (collision_detected) {
-                if (x_collision) {
-                    transform_entity.vel_x = 0;
-                }
-                if (y_collision) {
-                    transform_entity.vel_y = 0;
-                }         
-            };
         });
     }
 };
@@ -630,6 +599,8 @@ struct performance_logging_system
 {
     Uint32 start_time = 0;   // Holds the time when start() is called
     bool is_running = false; // Tracks whether the timer is active
+    Uint32 total_ms = 0;
+    Uint32 total_frames = 0;
 
     // Starts the timer
     void start() 
@@ -645,8 +616,10 @@ struct performance_logging_system
         {
             Uint32 now = SDL_GetTicks();
             Uint32 elapsed_time = now - start_time;
-            std::cout << "Elapsed Time: " << elapsed_time << " ms\n";
-            is_running = false;
+            total_ms += elapsed_time;
+            total_frames += 1;
+            std::cout << "Elapsed Time: " << elapsed_time << " ms. Average time: " << total_ms/total_frames << " ms\n";
+            is_running = false;     
         }
         else 
         {
@@ -806,11 +779,10 @@ class game
             m_aquire_target_system.update(m_registry);
             m_path_finding_system.update(m_registry);
             m_enemy_movement_system.update(m_registry);
-            m_collision_system.update(m_registry);           
-            m_transform_system.update(m_registry);
             m_sprite_animation_system.update(m_registry);
+            m_collision_system.update(m_registry);           
+            m_transform_system.update(m_registry);  
             m_sprite_system.update(m_registry);
-            
             m_logging_system.update(m_registry, 3);          
         }
 
