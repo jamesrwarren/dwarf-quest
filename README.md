@@ -18,6 +18,3 @@ $(pkg-config --libs sdl2 sdl2_image)
 ```
 
 
-
-
-
