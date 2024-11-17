@@ -45,17 +45,6 @@ private:
     GameConfig() = default;
 };
 
-// Other Structs
-// struct Node {
-//     int grid_x;
-//     int grid_y;
-//     int g_cost;
-//     int h_cost;
-//     Node* parent;
-
-//     int f_cost() const { return g_cost + h_cost; }
-// };
-
 struct Node {
     int grid_x, grid_y;
     int g_cost = 0;
@@ -73,7 +62,7 @@ struct pair_hash {
     }
 };
 
-//COMPONENTS
+// ----- COMPONENTS -----
 struct sprite_component{
     SDL_Rect src;
     SDL_Rect dst;
@@ -114,7 +103,7 @@ struct path_finding_component {
     int target_node;
 };
 
-// SYSTEMS
+// ----- SYSTEMS -----
 struct sprite_system 
 {
     static std::pair<int, int> get_grid_position(int x, int y)
@@ -452,38 +441,20 @@ struct collision_system
         });
     }
 
-    void update_cell_entities (
-        sprite_component &sprite_entity, int &dx, int &dy, 
-        std::__1::unordered_map<std::__1::pair<int, int>, std::__1::vector<entt::entity>, cwt::pair_hash> &grid_map,
-        std::__1::vector<entt::entity> &cell_entities
-        ) 
-    {
-        cell_entities.clear();
-        std::pair<int, int> neighbor_cell = { sprite_entity.grid_x + dx, sprite_entity.grid_y + dy };
-
-        if (static_grid_map.find(neighbor_cell) != static_grid_map.end()) {
-            cell_entities = static_grid_map[neighbor_cell];
-        }
-
-        if (grid_map.find(neighbor_cell) != grid_map.end()) {
-            cell_entities.insert(
-                cell_entities.end(),                  // Insert at the end of cell_entities
-                grid_map[neighbor_cell].begin(),       // Start of grid_map vector
-                grid_map[neighbor_cell].end()          // End of grid_map vector
-            );
-        }
-    }
-
     void check_collisions (
         collidable_system &s_collidable, int &entity_proposed_x, int &entity_proposed_y,
-        sprite_component &sprite_entity, sprite_component &sprite_collidable, transform_component &transform_entity, 
-        bool &x_collision, bool &y_collision, bool &collision_detected, bool &all_x_collisions, bool &all_y_collisions
+        sprite_component &sprite_entity, entt::entity &entity_collidable, const sprite_component &sprite_collidable, transform_component &transform_entity, 
+        bool &collision_detected, bool &x_collision, bool &y_collision, bool &all_x_collisions, bool &all_y_collisions, 
+        collision_detection_component &collision_entity
     ) 
     {
         if (s_collidable.checkCollision(
             entity_proposed_x, entity_proposed_y, sprite_entity.dst.w, sprite_entity.dst.h, 
             sprite_collidable.dst.x, sprite_collidable.dst.y, sprite_collidable.dst.w, sprite_collidable.dst.h))
         {
+            // Add to colliding_entity collided list
+            collision_entity.collided_entities.push_back(entity_collidable);
+            
             // Check separately for x and y collisions if moving diagonally
             if (transform_entity.vel_x != 0 && transform_entity.vel_y != 0) {
                 x_collision = s_collidable.checkCollision(
@@ -507,53 +478,81 @@ struct collision_system
         }
     }
 
-    void update(entt::registry& reg)
-    {
-        collidable_system s_collidable; // for access to methods in collidable system
-        std::unordered_map<std::pair<int, int>, std::vector<entt::entity>, pair_hash> grid_map; // Map to store entities by grid cell
-        std::vector<entt::entity> cell_entities; // temp vector to store collidable objects for each cell 
-
+    void update(entt::registry& reg) {
+        collidable_system s_collidable;
+        std::unordered_map<std::pair<int, int>, std::vector<entt::entity>, pair_hash> grid_map;
+        
         auto view_all_collidables = reg.view<sprite_component, collidable_component>();
         auto view_non_static_collidables = reg.view<sprite_component, transform_component, collidable_component>();
-        view_non_static_collidables.each([&](entt::entity entity, sprite_component &sprite, transform_component &transform) {
-            std::pair<int, int> cell = { sprite.grid_x, sprite.grid_y };
-            grid_map[cell].push_back(entity);
+
+        // Populate grid_map with dynamic entities
+        view_non_static_collidables.each([&](entt::entity entity, sprite_component& sprite, transform_component& transform) {
+            grid_map[{sprite.grid_x, sprite.grid_y}].push_back(entity);
         });
 
-        // Perform collision detection with nearby entities
+        // Helper lambda for processing entities in a grid cell
+        auto process_cell = [&](const std::unordered_map<std::pair<int, int>, std::vector<entt::entity>, pair_hash>& map, 
+                                int grid_x, int grid_y, 
+                                auto&& process_entity) {
+            auto it = map.find({grid_x, grid_y});
+            if (it != map.end()) {
+                for (entt::entity entity : it->second) {
+                    process_entity(entity);
+                }
+            }
+        };
+
+        // Loop through entities that can detect collisions (eg players, enemies etc...)
         auto view_entity = reg.view<sprite_component, transform_component, collision_detection_component>();
-        view_entity.each([&](entt::entity entity, sprite_component &sprite_entity, transform_component &transform_entity, collision_detection_component &collision_entity) {
+        view_entity.each([&](entt::entity entity, sprite_component& sprite_entity, transform_component& transform_entity, collision_detection_component& collision_entity) {
+            
+            collision_entity.collided_entities.clear(); // Clear out collided stack each frame for each entity
             int entity_proposed_x = transform_entity.pos_x + transform_entity.vel_x;
             int entity_proposed_y = transform_entity.pos_y + transform_entity.vel_y;
 
-            bool collision_detected, all_x_collisions, all_y_collisions = false;
+            bool collision_detected = false;
+            bool all_x_collisions = false, all_y_collisions = false;
             bool x_collision, y_collision = true;
 
-            for (int dx = -2; dx <= 2; ++dx) { // Checks within two neighbouring squares
-                for (int dy = -2; dy <= 2; ++dy) {
-                    update_cell_entities (sprite_entity, dx, dy, grid_map, cell_entities);
+            // Compute grid range based on entity size and speed
+            const int grid_radius = 2;  // Example: Adjust based on entity speed and size
+            for (int dx = -grid_radius; dx <= grid_radius; ++dx) {
+                for (int dy = -grid_radius; dy <= grid_radius; ++dy) {
+                    int cell_x = sprite_entity.grid_x + dx;
+                    int cell_y = sprite_entity.grid_y + dy;
 
-                    for (entt::entity entity_collidable : cell_entities) { // Loop through entities in the cell
-                        if (entity == entity_collidable) continue; // Skip self-collision check
-
-                        sprite_component &sprite_collidable = view_all_collidables.get<sprite_component>(entity_collidable);
-
-                        // Check for collision
+                    // Process dynamic entities
+                    process_cell(grid_map, cell_x, cell_y, [&](entt::entity entity_collidable) {
+                        if (entity == entity_collidable) return; // Skip self-collision check
+                        
+                        const sprite_component& sprite_collidable = view_all_collidables.get<sprite_component>(entity_collidable);
+                        // std::cout << "Entity collidable: (" << sprite_collidable.grid_x << ", " << sprite_collidable.grid_y << ")" << " Dynamic Entity: " << static_cast<uint32_t>(entity_collidable) << "\n";
                         check_collisions(
-                            s_collidable, entity_proposed_x, entity_proposed_y, sprite_entity, sprite_collidable, 
-                            transform_entity, x_collision, y_collision, 
-                            collision_detected, all_x_collisions, all_y_collisions
+                            s_collidable, entity_proposed_x, entity_proposed_y, sprite_entity, entity_collidable, sprite_collidable,
+                            transform_entity, collision_detected, x_collision, y_collision, all_x_collisions, all_y_collisions, collision_entity
                         );
-                    }
+                    });
+
+                    // Process static entities
+                    process_cell(static_grid_map, cell_x, cell_y, [&](entt::entity entity_static_collidable) {
+                        const sprite_component& sprite_static_collidable = view_all_collidables.get<sprite_component>(entity_static_collidable);
+                        // std::cout << "Entity collidable: (" << sprite_static.grid_x << ", " << sprite_static.grid_y << ")" << " Static Entity: " << static_cast<uint32_t>(static_entity) << "\n";
+                        check_collisions(
+                            s_collidable, entity_proposed_x, entity_proposed_y, sprite_entity, entity_static_collidable, sprite_static_collidable,
+                            transform_entity, collision_detected, x_collision, y_collision, all_x_collisions, all_y_collisions, collision_entity
+                        );
+                    });
                 }
             }
 
-            if (collision_detected) { // If a collision was detected, revert the entity's velocity
+            // Adjust velocity if collision detected
+            if (collision_detected) {
                 if (all_x_collisions) { transform_entity.vel_x = 0; }
                 if (all_y_collisions) { transform_entity.vel_y = 0; }
             }
         });
     }
+
 };
 
 struct logging_system 
@@ -567,11 +566,15 @@ struct logging_system
         
         if (elapsed_time >= (log_interval * 1000)) {
             // Players State
-            auto view_players = reg.view<sprite_component, transform_component, player_component>();
-            view_players.each([&](entt::entity player_entity, sprite_component &player_sprite, transform_component &player_transform) {
+            auto view_players = reg.view<sprite_component, transform_component, player_component, collision_detection_component>();
+            view_players.each([&](entt::entity player_entity, sprite_component &player_sprite, transform_component &player_transform, collision_detection_component &player_collidable) {
                 std::cout << "Player ID: " << static_cast<uint32_t>(player_entity) 
                 << " -- X,Y: (" << player_transform.pos_x << "," << player_transform.pos_y
                 << ") -- Grid X,Y: (" << player_sprite.grid_x << "," << player_sprite.grid_y << ")" << '\n';
+
+                for (const auto& collided_entity : player_collidable.collided_entities) {
+                    std::cout << "Collided with: " << static_cast<uint32_t>(collided_entity) << '\n';
+                }
             });
         
             // Enemies State
@@ -658,6 +661,8 @@ void render(entt::registry& reg, SDL_Renderer* renderer) {
     }
 };
 
+// ----- Initialisation Functions -----
+
 void load_map(const std::string& filename, entt::registry& registry, SDL_Renderer* renderer)
 {   
     std::ifstream map_file(filename);
@@ -717,7 +722,7 @@ void load_map(const std::string& filename, entt::registry& registry, SDL_Rendere
     }
 }
 
-// WORLD
+// ----- WORLD -----
 class game
 {
     public: 

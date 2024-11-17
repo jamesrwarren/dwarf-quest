@@ -43,13 +43,13 @@ jobs:
               # Get the author of the first commit on this branch
               author=$(git log --format="%an" "$branch" | tail -1)
               
-              # Proceed only if the author is "jamesrwarren"
-              if [[ "$author" == "jamesrwarren" ]]; then
+              # Proceed only if the author is "renovate[bot]"
+              if [[ "$author" == "renovate[bot]" ]]; then
                 # Check if only .yml, .txt, or .md files were modified in the branch
                 modified_files=$(git diff --name-only origin/main..."${branch}")
 
                 # Filter the files and see if any of them don't match the allowed extensions
-                if echo "$modified_files" | grep -vqE '\.(yml|txt|md)$'; then
+                if echo "$modified_files" | grep -vqE '\.(yml|txt|lock|json)$'; then
                   echo "Skipping $branch because it has modified files outside .yml, .txt, or .md"
                   continue
                 fi
