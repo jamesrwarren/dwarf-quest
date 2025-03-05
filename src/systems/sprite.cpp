@@ -2,6 +2,8 @@
 
 #include "../components/transform.h"
 #include "../components/sprite.h"
+#include "../components/weapon.h"
+#include "../components/render_layer.h"
 #include "../config/game_config.h"
 #include <entt/entt.hpp>
 
@@ -13,6 +15,23 @@ struct sprite_system
         int grid_y = y / GameConfig::instance().grid_cell_height;
 
         return std::make_pair(grid_x, grid_y);
+    }
+
+    void update_weapons(entt::registry& reg)
+    {
+        // Updates position (will not pull back terrain as terrain has no transform component)
+        auto view_weapon = reg.view<sprite_component, weapon_component>();
+        view_weapon.each([&](entt::entity entity, sprite_component &sprite, weapon_component &weapon){
+
+            auto weapon_owner_transform = reg.try_get<transform_component>(weapon.owner_entt);
+            
+            sprite.dst.x = weapon_owner_transform->pos_x;
+            sprite.dst.y = weapon_owner_transform->pos_y;
+
+            auto [grid_x, grid_y] = get_grid_position(sprite.dst.x, sprite.dst.y);
+            sprite.grid_x = grid_x;
+            sprite.grid_y = grid_y;           
+        });
     }
 
     void update(entt::registry& reg)
@@ -29,23 +48,51 @@ struct sprite_system
         });
     }
 
-    void render(entt::registry& reg, SDL_Renderer* renderer)
+    void render_background(entt::registry& reg, SDL_Renderer* renderer)
     {
         // Create a view for sprite components
-        auto view_sprite = reg.view<sprite_component>();
+        auto view_sprite = reg.view<sprite_component, background_component>();
 
-        // Use reverse iterators to render in ascending order of entity IDs
-        for (auto this_sprite = view_sprite.rbegin(); this_sprite != view_sprite.rend(); ++this_sprite) {
-            entt::entity entity = *this_sprite;
-            
-            sprite_component& sprite = view_sprite.get<sprite_component>(entity);
-            // Render the sprite using SDL_RenderCopy
+        view_sprite.each([&](sprite_component &sprite) {
+
             SDL_RenderCopy(
                 renderer, 
                 sprite.texture, 
                 &sprite.src, 
                 &sprite.dst
             );
-        }
+        });
+    }
+
+    void render_layer_one(entt::registry& reg, SDL_Renderer* renderer)
+    {
+        // Create a view for sprite components
+        auto view_sprite = reg.view<sprite_component, layer_one_component>();
+
+        view_sprite.each([&](sprite_component &sprite) {
+
+            SDL_RenderCopy(
+                renderer, 
+                sprite.texture, 
+                &sprite.src, 
+                &sprite.dst
+            );
+        });
+    }
+
+    void render_layer_two(entt::registry& reg, SDL_Renderer* renderer)
+    {
+        // Create a view for sprite components
+        auto view_sprite = reg.view<sprite_component, layer_two_component>();
+
+        view_sprite.each([&](sprite_component &sprite) {
+
+            SDL_RenderCopy(
+                renderer, 
+                sprite.texture, 
+                &sprite.src, 
+                &sprite.dst
+            );
+        });
     }
 };

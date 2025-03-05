@@ -32,7 +32,7 @@ struct movement_system
 
     void update_enemies(entt::registry& reg)
     {
-        // Get a view of all enemies (entities with aquire_target_component)
+        // Get a view of all enemies (entities with targetting_component)
         auto view_enemies = reg.view<transform_component, targetting_component>();
         view_enemies.each([&](transform_component &enemy_transform, targetting_component &aquire_target) {
 

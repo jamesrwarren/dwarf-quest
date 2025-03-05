@@ -13,13 +13,14 @@ int main(int argc, char* argv[])
     cwt::game game;
     
     // Create player character
-    // const char* dwarf_path = "assets/images/dwarf.png";
+    const char* dwarf_path = "assets/images/cloud.png";
     const char* player_path = "assets/images/player_sprite_sheet_2.png";
     auto player_character = create_player_animated(game, player_path, 10, 10);
+    auto player_weapon = create_weapon(game, dwarf_path, 10, 10, player_character);
 
     // Create enemy characters
     const char* goblin_path = "assets/images/goblin.png";
-    create_enemy(game, goblin_path, 10, 500);
+    // create_enemy(game, goblin_path, 10, 500);
     // create_enemy(game, goblin_path, 200, 500);
     // create_enemy(game, goblin_path, 300, 500);
     // create_enemy(game, goblin_path, 400, 500);

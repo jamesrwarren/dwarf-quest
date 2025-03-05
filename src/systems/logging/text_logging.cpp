@@ -9,8 +9,10 @@
 #include "../../components/player.h"
 #include "../../components/path_finding.h"
 #include "../../components/targetting.h"
+#include "../../components/render_layer.h"
 
 #include <entt/entt.hpp>
+
 
 struct logging_system 
 {
@@ -49,6 +51,12 @@ struct logging_system
                 }
 
                 std::cout << "Enemy Hitpoints: " << enemy_hitpoints.hitpoints << '\n';
+            });
+
+            auto view_static = reg.view<sprite_component, transform_component, background_component>();
+            view_static.each([&](entt::entity static_entity, sprite_component &static_sprite, transform_component &static_transform) 
+            {
+                std::cout << "Static ID: " << static_cast<uint32_t>(static_entity) << "Path from (" << static_sprite.grid_x << ", " << static_sprite.grid_y << ") xy_pos: " << static_sprite.dst.x << ", " << static_sprite.dst.y << "\n";
             });
 
             // std::cout << entity_proposed_x << "," << transform_entity.pos_y << '\n';

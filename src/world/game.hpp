@@ -81,17 +81,31 @@ class game
         void update()
         {  
             m_performance_logging_system.start();
+            
+            // Find out where everything is heading this frame
             m_movement_system.update_players(m_registry);
             m_targetting_system.update(m_registry);
             m_path_finding_system.update(m_registry);
             m_movement_system.update_enemies(m_registry);
-            m_combat_system.update_striking_attack_boxes(m_registry);
-            m_sprite_animation_system.update(m_registry);
+            m_movement_system.update_directions(m_registry);
+            
+            // Set weapon coords to be same as the weapon owner
+            m_transform_system.update_weapons(m_registry);
+            m_sprite_system.update_weapons(m_registry);
+            
+            // Work out where the weapons are
+            m_combat_system.update_weapon_states(m_registry);
+            
+            // Work out collisions and damage
             m_collision_system.update(m_registry);  
             m_combat_system.update(m_registry);         
             m_damage_system.update(m_registry);
+
+            // Finalise positions and animation frames of everything
             m_transform_system.update(m_registry);  
+            m_sprite_animation_system.update(m_registry);
             m_sprite_system.update(m_registry);
+            
             m_logging_system.update(m_registry, 3);          
         }
 
@@ -99,13 +113,15 @@ class game
         {
             SDL_RenderClear(m_renderer);
 
-            m_sprite_system.render(m_registry, m_renderer);
-            m_combat_system.render_attack_box(m_registry, m_renderer);
+            m_sprite_system.render_background(m_registry, m_renderer);
+            m_sprite_system.render_layer_one(m_registry, m_renderer);
+            m_sprite_system.render_layer_two(m_registry, m_renderer);
             m_damage_system.render_life_bars(m_registry, m_renderer);
+            m_damage_system.render_cooldowns(m_registry, m_renderer);
             m_visual_logging_system.render(m_registry, m_renderer);
             SDL_RenderPresent(m_renderer);
 
-             m_performance_logging_system.stop();
+            m_performance_logging_system.stop();
         }
 
     private:

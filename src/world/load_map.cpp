@@ -9,7 +9,7 @@
 
 #include "../components/transform.h"
 #include "../components/sprite.h"
-#include "../components/static.h"
+#include "../components/render_layer.h"
 #include "../components/collidable.h"
 #include "../systems/sprite.cpp"
 
@@ -39,7 +39,7 @@ void load_map(const std::string& filename, entt::registry& registry, SDL_Rendere
 
                 // Assign sprite component
                 sprite_component& sprite = registry.emplace<sprite_component>(entity);
-                registry.emplace<static_component>(entity);
+                registry.emplace<background_component>(entity);
 
                 // The image being used for the sprite
                 sprite.src.x = 0;
@@ -59,7 +59,7 @@ void load_map(const std::string& filename, entt::registry& registry, SDL_Rendere
                 // Load texture based on tile type
                 if (tile == 'd') {
                     sprite.texture = IMG_LoadTexture(renderer, "assets/images/dirt.jpeg");
-                    registry.emplace<collidable_component>(entity);
+                    registry.emplace<collidable_component>(entity, true);
                     std::cout << "Loaded DIRT" << std::endl;
                 } else if (tile == 'g') {
                     sprite.texture = IMG_LoadTexture(renderer, "assets/images/grass.png");

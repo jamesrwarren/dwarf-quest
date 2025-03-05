@@ -110,7 +110,7 @@ struct path_finding_system
         
         std::unordered_set<int> collidable_positions;
         auto view_collidable_entities = reg.view<sprite_component, collidable_component>();
-        view_collidable_entities.each([&](sprite_component &sprite) {
+        view_collidable_entities.each([&](sprite_component &sprite, collidable_component &collidable) {
             collidable_positions.insert(get_index(sprite.grid_x, sprite.grid_y));
         });
         bool updated_path_this_frame = false;

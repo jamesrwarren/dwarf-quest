@@ -28,4 +28,3 @@ World is a folder for initialising the game state.
 Config is for global configuration of the game parameters.
 
 Assets is a folder that includes all images, maps and other non code assets that the game needs.
-

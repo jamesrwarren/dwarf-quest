@@ -56,4 +56,28 @@ struct damage_system
             SDL_RenderFillRect(renderer, &life_bar.bar_rect);
         });
     }
+
+    void render_cooldowns(entt::registry& registry, SDL_Renderer* renderer) 
+    {
+        auto view = registry.view<transform_component, damage_component, cooldown_component>();
+        view.each([&](transform_component &transform, damage_component &damage, cooldown_component &cooldown) {
+            
+            
+            float cooldown_percent = (damage.elapsed_time / (float)damage.strike_cooldown) * 100;
+
+            // double cooldown_percent = 100;
+            // Update the life bar's width based on the current hitpoints
+            cooldown.bar_rect.w = (cooldown_percent * cooldown.width) / 100;  // Adjust according to max HP (100 in this example)
+
+            cooldown.color = get_health_color(cooldown_percent);
+
+            // std::cout << "ElapsedTime: " << damage.elapsed_time << " StrikeCD: " << damage.strike_cooldown << " CooldownPercent: " << cooldown_percent << '\n';
+
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Background Colour
+            SDL_RenderFillRect(renderer, &cooldown.background_bar_rect);
+            // Render the filled portion of the life bar
+            SDL_SetRenderDrawColor(renderer, cooldown.color.r, cooldown.color.g, cooldown.color.b, 255); // Health color
+            SDL_RenderFillRect(renderer, &cooldown.bar_rect);
+        });
+    }
 };
