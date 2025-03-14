@@ -10,6 +10,7 @@
 #include "../components/sprite_animation.h"
 #include "../components/health.h"
 #include "../components/damage.h"
+#include "../components/combat.h"
 #include "../components/player.h"
 #include "../components/render_layer.h"
 #include "../components/weapon.h"
@@ -32,7 +33,10 @@ entt::entity create_player_animated(cwt::game &game, const char *texture_path, i
         SDL_Rect{0, 0, 76, 100}, 
         SDL_Rect{x, y, player_width, player_height},
         SDL_Rect{x, y, player_width, player_height}, 
-        IMG_LoadTexture(game.get_renderer(), texture_path)
+        IMG_LoadTexture(game.get_renderer(), texture_path),
+        0, 0,
+        true,
+        std::string("PLAYER")
     );
     game.get_registry().emplace<sprite_animation_component>(player_entity, 1, 0, 0);
     game.get_registry().emplace<transform_component>(player_entity, x, y, 0, 0);
@@ -40,7 +44,7 @@ entt::entity create_player_animated(cwt::game &game, const char *texture_path, i
     game.get_registry().emplace<collidable_component>(player_entity, true);
     game.get_registry().emplace<hitpoints_component>(player_entity, 10, 10);
     game.get_registry().emplace<life_bar_component>(player_entity, player_width, 8, SDL_Color{0, 255, 0, 255}, SDL_Rect{x, y, player_width, 8});
-    game.get_registry().emplace<damage_component>(player_entity, false, false, 10, 0, 1, 0, 3000, SDL_GetTicks());
+    game.get_registry().emplace<combat_component>(player_entity, false, false, 10, 0, 0, 3000, SDL_GetTicks());
     game.get_registry().emplace<cooldown_component>(
         player_entity, cooldown_width, cooldown_height, 
         SDL_Color{0, 255, 0, 255}, SDL_Rect{cooldown_x_placement, cooldown_y_placement, 100, cooldown_height}, 
@@ -61,16 +65,19 @@ entt::entity create_enemy(cwt::game &game, const char *texture_path, int x, int 
         SDL_Rect{0, 0, 3768, 3556}, 
         SDL_Rect{x, y, enemy_width, enemy_height}, 
         SDL_Rect{x, y, enemy_width, enemy_height}, 
-        IMG_LoadTexture(game.get_renderer(), texture_path)
+        IMG_LoadTexture(game.get_renderer(), texture_path),
+        0, 0,
+        true,
+        std::string("ENEMY")
     );
     game.get_registry().emplace<transform_component>(enemy_entity, x, y, 0, 0);
     game.get_registry().emplace<targetting_component>(enemy_entity);
     game.get_registry().emplace<collision_detection_component>(enemy_entity);
-    game.get_registry().emplace<path_finding_component>(enemy_entity, SDL_GetTicks(), false);
     game.get_registry().emplace<collidable_component>(enemy_entity, true);
+    game.get_registry().emplace<path_finding_component>(enemy_entity, SDL_GetTicks(), false);
     game.get_registry().emplace<hitpoints_component>(enemy_entity, 10, 10);
     game.get_registry().emplace<life_bar_component>(enemy_entity, enemy_width, 8, SDL_Color{0, 255, 0, 255}, SDL_Rect{x, y, enemy_width, 8});
-    game.get_registry().emplace<damage_component>(enemy_entity, true, false, 10, 0, 1, 0, 3000, SDL_GetTicks());
+    game.get_registry().emplace<combat_component>(enemy_entity, true, false, 10, 0, 0, 3000, SDL_GetTicks());
     game.get_registry().emplace<layer_two_component>(enemy_entity);
 
     return enemy_entity;
@@ -81,12 +88,16 @@ entt::entity create_weapon(cwt::game &game, const char *texture_path, int x, int
     int weapon_width = GameConfig::instance().grid_cell_width;
     int weapon_height = GameConfig::instance().grid_cell_height;
 
-    game.get_registry().emplace<weapon_component>(weapon_entity, false, player_entity);
+    game.get_registry().emplace<weapon_component>(weapon_entity, player_entity);
+    game.get_registry().emplace<damage_component>(weapon_entity, 1);
     game.get_registry().emplace<sprite_component>(weapon_entity, 
         SDL_Rect{0, 0, 76, 100}, 
         SDL_Rect{x, y, weapon_width, weapon_height},
         SDL_Rect{x, y, weapon_width, weapon_height}, 
-        IMG_LoadTexture(game.get_renderer(), texture_path)
+        IMG_LoadTexture(game.get_renderer(), texture_path),
+        0, 0,
+        false,
+        std::string("WEAPON")
     );
     game.get_registry().emplace<sprite_animation_component>(weapon_entity, 1, 0, 0);
     game.get_registry().emplace<transform_component>(weapon_entity, x, y, 0, 0);

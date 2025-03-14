@@ -3,24 +3,28 @@
 #include <SDL2/SDL.h>
 
 #include "../components/transform.h"
-#include "../components/damage.h"
+#include "../components/combat.h"
 #include "../components/health.h"
 
 #include <entt/entt.hpp>
 
+SDL_Color get_health_color(int health) 
+{
+    if (health > 60) {
+        return {0, 255, 0, 255}; // Green for full health
+    } else if (health > 30) {
+        return {255, 255, 0, 255}; // Yellow for medium health
+    } else {
+        return {255, 0, 0, 255}; // Red for low health
+    }
+}
+
+// Considers the following things and calculates total hitpoints remaining this frame:
+// - damage taken this turn 
+// - life gained this turn 
+// - Any shields etc 
 struct damage_system 
 {  
-    SDL_Color get_health_color(int health) 
-    {
-        if (health > 60) {
-            return {0, 255, 0, 255}; // Green for full health
-        } else if (health > 30) {
-            return {255, 255, 0, 255}; // Yellow for medium health
-        } else {
-            return {255, 0, 0, 255}; // Red for low health
-        }
-    }
-
     void update(entt::registry& reg)
     {
         auto view_take_damage = reg.view<hitpoints_component, life_bar_component>();
@@ -29,6 +33,7 @@ struct damage_system
                 hitpoints.hitpoints -= hitpoints.damage_taken_this_turn;
                 hitpoints.damage_taken_this_turn = 0;
             }
+
             if (hitpoints.hitpoints < 0) hitpoints.hitpoints = 0;
             
         });
@@ -59,8 +64,8 @@ struct damage_system
 
     void render_cooldowns(entt::registry& registry, SDL_Renderer* renderer) 
     {
-        auto view = registry.view<transform_component, damage_component, cooldown_component>();
-        view.each([&](transform_component &transform, damage_component &damage, cooldown_component &cooldown) {
+        auto view = registry.view<transform_component, combat_component, cooldown_component>();
+        view.each([&](transform_component &transform, combat_component &damage, cooldown_component &cooldown) {
             
             
             float cooldown_percent = (damage.elapsed_time / (float)damage.strike_cooldown) * 100;

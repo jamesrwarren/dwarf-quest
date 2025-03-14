@@ -63,8 +63,10 @@ void check_collisions (
         entity_proposed_x, entity_proposed_y, sprite_entity.dst.w, sprite_entity.dst.h, 
         sprite_target.dst.x, sprite_target.dst.y, sprite_target.dst.w, sprite_target.dst.h))
     {
-        // Add to colliding_entity collided list
-        collision_entity.collided_entities.push_back(entt_target);
+        // Add to colliding_entity collided list if visible
+        if (sprite_target.visible) {
+            collision_entity.collided_entities.push_back(entt_target);
+        }
         
         // Check separately for x and y collisions if moving diagonally
         if (transform_entity.vel_x != 0 && transform_entity.vel_y != 0) {
@@ -108,6 +110,7 @@ void process_by_grid_map (
     entt::entity entity,
     bool process_static
 ) {
+    // TODO - add this to a global thing so we're not writing it on each loop
     auto view_all_collidables = reg.view<sprite_component, collidable_component>();
 
     process_grid_cell(grid_map, cell_x, cell_y, [&](entt::entity entt_target) {
@@ -116,6 +119,12 @@ void process_by_grid_map (
         
         const sprite_component& sprite_static_target = view_all_collidables.get<sprite_component>(entt_target);
         const collidable_component& collidable_static_target = view_all_collidables.get<collidable_component>(entt_target);
+
+        if (process_static) {
+            std::cout << "STATIC Entity collidable: (" << sprite_static_target.grid_x << ", " << sprite_static_target.grid_y << ")" << "\n";
+        } else {
+            std::cout << "DYNAMIC Entity collidable: (" << sprite_static_target.grid_x << ", " << sprite_static_target.grid_y << ")" << "\n";
+        }
 
         if (!process_static) {
             auto weapon_target = reg.try_get<weapon_component>(entt_target);
@@ -126,8 +135,7 @@ void process_by_grid_map (
                 }
             }
         }
-
-        // std::cout << "Entity collidable: (" << sprite_static_target.grid_x << ", " << sprite_static_target.grid_y << ")" << " Static Entity: " << static_cast<uint32_t>(entt_static_target) << "\n";
+        
         check_collisions(
             s_collidable, 
             entity_proposed_x, 
@@ -167,15 +175,14 @@ struct collision_system
         collidable_system s_collidable;
         std::unordered_map<std::pair<int, int>, std::vector<entt::entity>, pair_hash> dynamic_grid_map;
         
-        auto view_all_collidables = reg.view<sprite_component, collidable_component>();
-        auto view_non_static_collidables = reg.view<sprite_component, transform_component, collidable_component>();
-
         // Populate grid_map with dynamic entities
-        view_non_static_collidables.each([&](entt::entity entity, sprite_component& sprite, transform_component& transform, collidable_component &collidable) {
+        auto view_dynamic_collidables = reg.view<sprite_component, transform_component, collidable_component>();
+        view_dynamic_collidables.each([&](entt::entity entity, sprite_component& sprite, transform_component& transform, collidable_component &collidable) {
             dynamic_grid_map[{sprite.grid_x, sprite.grid_y}].push_back(entity);
         });
 
         // Loop through entities that can detect collisions (eg players, enemies etc...)
+        // Bear in mind that weapons and explosions etc are collidable_components not collision_detection_components
         auto view_entity = reg.view<sprite_component, transform_component, collision_detection_component>();
         view_entity.each([&](entt::entity entity, sprite_component& sprite_entity, transform_component& transform_entity, collision_detection_component& collision_entity) {
             

@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 
     // Create enemy characters
     const char* goblin_path = "assets/images/goblin.png";
-    // create_enemy(game, goblin_path, 10, 500);
+    create_enemy(game, goblin_path, 10, 500);
     // create_enemy(game, goblin_path, 200, 500);
     // create_enemy(game, goblin_path, 300, 500);
     // create_enemy(game, goblin_path, 400, 500);

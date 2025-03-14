@@ -70,7 +70,9 @@ struct sprite_system
         auto view_sprite = reg.view<sprite_component, layer_one_component>();
 
         view_sprite.each([&](sprite_component &sprite) {
-
+            if (!sprite.visible) {
+                return;
+            }
             SDL_RenderCopy(
                 renderer, 
                 sprite.texture, 
@@ -86,7 +88,6 @@ struct sprite_system
         auto view_sprite = reg.view<sprite_component, layer_two_component>();
 
         view_sprite.each([&](sprite_component &sprite) {
-
             SDL_RenderCopy(
                 renderer, 
                 sprite.texture, 

@@ -4,7 +4,7 @@
 
 #include "../components/transform.h"
 #include "../components/player.h"
-#include "../components/damage.h"
+#include "../components/combat.h"
 #include "../components/targetting.h"
 
 #include <entt/entt.hpp>
@@ -16,15 +16,15 @@ struct movement_system
         const Uint8* keys = SDL_GetKeyboardState(NULL);
 
         // Update movement based on key inputs
-        auto view_player = reg.view<transform_component, damage_component, player_component>();
-        view_player.each([&keys, &reg](transform_component &transform, damage_component &damage){
+        auto view_player = reg.view<transform_component, combat_component, player_component>();
+        view_player.each([&keys, &reg](transform_component &transform, combat_component &combat){
             // Apply movement based on input
             if (keys[SDL_SCANCODE_A]) { transform.vel_x = -1; } 
             if (keys[SDL_SCANCODE_S]) { transform.vel_y = 1; }
             if (keys[SDL_SCANCODE_W]) { transform.vel_y = -1; }
             if (keys[SDL_SCANCODE_D]) { transform.vel_x = 1; }
-            if (keys[SDL_SCANCODE_L]) { damage.attacking = true; }
-            if (!keys[SDL_SCANCODE_L]) { damage.attacking = false; }
+            if (keys[SDL_SCANCODE_L]) { combat.attacking = true; }
+            if (!keys[SDL_SCANCODE_L]) { combat.attacking = false; }
             if (!keys[SDL_SCANCODE_A] && !keys[SDL_SCANCODE_D]) { transform.vel_x = 0; }
             if (!keys[SDL_SCANCODE_S] && !keys[SDL_SCANCODE_W]) { transform.vel_y = 0; }    
         });

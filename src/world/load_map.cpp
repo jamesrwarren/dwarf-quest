@@ -41,6 +41,8 @@ void load_map(const std::string& filename, entt::registry& registry, SDL_Rendere
                 sprite_component& sprite = registry.emplace<sprite_component>(entity);
                 registry.emplace<background_component>(entity);
 
+                sprite.visible = true;
+                sprite.label = std::string("TERRAIN");
                 // The image being used for the sprite
                 sprite.src.x = 0;
                 sprite.src.y = 0;

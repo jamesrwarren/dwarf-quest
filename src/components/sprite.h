@@ -9,4 +9,6 @@ struct sprite_component{
     SDL_Rect hit_box;
     SDL_Texture* texture;
     int grid_x, grid_y; // Grid position on the map
+    bool visible;
+    std::string label;
 };
