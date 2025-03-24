@@ -4,4 +4,5 @@
 
 struct damage_component{
     int damage_per_hit;
+    bool apply_damage;
  };

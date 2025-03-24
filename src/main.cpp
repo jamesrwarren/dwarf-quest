@@ -13,18 +13,16 @@ int main(int argc, char* argv[])
     cwt::game game;
     
     // Create player character
-    const char* dwarf_path = "assets/images/cloud.png";
-    const char* player_path = "assets/images/player_sprite_sheet_2.png";
+    const char* weapon_path = "assets/images/sword.png";
+    const char* player_path = "assets/images/player.png";
     auto player_character = create_player_animated(game, player_path, 10, 10);
-    auto player_weapon = create_weapon(game, dwarf_path, 10, 10, player_character);
+    auto player_weapon = create_weapon(game, weapon_path, 10, 10, player_character);
 
     // Create enemy characters
-    const char* goblin_path = "assets/images/goblin.png";
-    create_enemy(game, goblin_path, 10, 500);
-    // create_enemy(game, goblin_path, 200, 500);
-    // create_enemy(game, goblin_path, 300, 500);
-    // create_enemy(game, goblin_path, 400, 500);
-
+    const char* zombie_path = "assets/images/zombie.png";
+    
+    // auto zombie_1 = create_enemy(game, zombie_path, 10, 200);
+    // auto zombie_weapon = create_weapon(game, weapon_path, 10, 10, zombie_1);
 
     while(game.is_running()) 
     {

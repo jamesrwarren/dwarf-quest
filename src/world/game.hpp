@@ -88,12 +88,13 @@ class game
             m_path_finding_system.update(m_registry);
             m_movement_system.update_enemies(m_registry);
             m_movement_system.update_directions(m_registry);
-            
+            m_sprite_animation_system.update(m_registry);
+
             // Set weapon coords to be same as the weapon owner
             m_transform_system.update_weapons(m_registry);
             m_sprite_system.update_weapons(m_registry);
-            
-            // Work out where the weapons are
+
+            // Work out where the weapons are depending on various things
             m_combat_system.update_weapon_states(m_registry);
             
             // Work out collisions and damage
@@ -103,7 +104,7 @@ class game
 
             // Finalise positions and animation frames of everything
             m_transform_system.update(m_registry);  
-            m_sprite_animation_system.update(m_registry);
+            
             m_sprite_system.update(m_registry);
             
             m_logging_system.update(m_registry, 3);          

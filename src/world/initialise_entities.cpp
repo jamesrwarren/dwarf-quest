@@ -22,6 +22,9 @@ entt::entity create_player_animated(cwt::game &game, const char *texture_path, i
     int player_width = GameConfig::instance().grid_cell_width;
     int player_height = GameConfig::instance().grid_cell_height;
 
+    // int player_width = 200;
+    // int player_height = 200;
+
     int cooldown_height = 8;
     int cooldown_width = 200;
     int cooldown_x_placement = 20;
@@ -30,9 +33,9 @@ entt::entity create_player_animated(cwt::game &game, const char *texture_path, i
 
     game.get_registry().emplace<player_component>(player_entity);
     game.get_registry().emplace<sprite_component>(player_entity, 
-        SDL_Rect{0, 0, 76, 100}, 
+        128, 128,
+        SDL_Rect{0, 0, 128, 128}, 
         SDL_Rect{x, y, player_width, player_height},
-        SDL_Rect{x, y, player_width, player_height}, 
         IMG_LoadTexture(game.get_renderer(), texture_path),
         0, 0,
         true,
@@ -62,16 +65,18 @@ entt::entity create_enemy(cwt::game &game, const char *texture_path, int x, int 
     int enemy_height = GameConfig::instance().grid_cell_height;
 
     game.get_registry().emplace<sprite_component>(enemy_entity, 
-        SDL_Rect{0, 0, 3768, 3556}, 
-        SDL_Rect{x, y, enemy_width, enemy_height}, 
+        128, 128,
+        SDL_Rect{0, 0, 128, 128}, 
         SDL_Rect{x, y, enemy_width, enemy_height}, 
         IMG_LoadTexture(game.get_renderer(), texture_path),
         0, 0,
         true,
         std::string("ENEMY")
     );
+    game.get_registry().emplace<sprite_animation_component>(enemy_entity, 1, 0, 0);
     game.get_registry().emplace<transform_component>(enemy_entity, x, y, 0, 0);
     game.get_registry().emplace<targetting_component>(enemy_entity);
+    game.get_registry().emplace<damage_component>(enemy_entity, 1, false);
     game.get_registry().emplace<collision_detection_component>(enemy_entity);
     game.get_registry().emplace<collidable_component>(enemy_entity, true);
     game.get_registry().emplace<path_finding_component>(enemy_entity, SDL_GetTicks(), false);
@@ -89,17 +94,16 @@ entt::entity create_weapon(cwt::game &game, const char *texture_path, int x, int
     int weapon_height = GameConfig::instance().grid_cell_height;
 
     game.get_registry().emplace<weapon_component>(weapon_entity, player_entity);
-    game.get_registry().emplace<damage_component>(weapon_entity, 1);
-    game.get_registry().emplace<sprite_component>(weapon_entity, 
-        SDL_Rect{0, 0, 76, 100}, 
+    game.get_registry().emplace<damage_component>(weapon_entity, 1, false);
+    game.get_registry().emplace<sprite_component>(weapon_entity,
+        325, 743,
+        SDL_Rect{0, 0, 325, 743}, 
         SDL_Rect{x, y, weapon_width, weapon_height},
-        SDL_Rect{x, y, weapon_width, weapon_height}, 
         IMG_LoadTexture(game.get_renderer(), texture_path),
         0, 0,
         false,
         std::string("WEAPON")
     );
-    game.get_registry().emplace<sprite_animation_component>(weapon_entity, 1, 0, 0);
     game.get_registry().emplace<transform_component>(weapon_entity, x, y, 0, 0);
     game.get_registry().emplace<collidable_component>(weapon_entity, false);
     game.get_registry().emplace<layer_one_component>(weapon_entity);

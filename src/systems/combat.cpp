@@ -29,13 +29,15 @@ struct combat_system
 
             // loop through the collided entities and check for damaging entities then work out how much damage they do
             for (const entt::entity collided_entity : collision_detection.collided_entities) {
-                    
+
                     // Only do something if character has collided with a thing that does damage
                     if (!view_damaging_entities.contains(collided_entity)) { continue; }
 
+
                     auto damage_entity = reg.try_get<damage_component>(collided_entity);
-                    if (damage_entity) {
+                    if (damage_entity && damage_entity->apply_damage) {
                         hitpoints.damage_taken_this_turn += damage_entity->damage_per_hit;
+                        damage_entity->apply_damage = false;
                     }
 
                 }
@@ -46,8 +48,8 @@ struct combat_system
     {
         Uint32 now = SDL_GetTicks();
 
-        auto view_weapon_entities = reg.view<weapon_component, sprite_component, transform_component>();
-        view_weapon_entities.each([&](entt::entity entity, weapon_component &weapon, sprite_component &sprite, transform_component &transform) {
+        auto view_weapon_entities = reg.view<weapon_component, sprite_component, transform_component, damage_component>();
+        view_weapon_entities.each([&](entt::entity entity, weapon_component &weapon, sprite_component &sprite, transform_component &transform, damage_component &damage) {
             if (!reg.valid(weapon.owner_entt)) {
                 return;
             }
@@ -70,6 +72,7 @@ struct combat_system
                     weapon_owner_combat->elapsed_time = weapon_owner_combat->strike_cooldown;
                     weapon_owner_combat->attack_scheduled = true;
                     weapon_owner_combat->last_strike = now;
+                    damage.apply_damage = true;
                 }            
             } else {
                 weapon_owner_combat->attack_scheduled = false;
@@ -84,74 +87,38 @@ struct combat_system
 
                 if (weapon_owner_transform->direction == Direction::R) {
                     transform.pos_x += 25;
+                    transform.direction = Direction::R;
                 } else if (weapon_owner_transform->direction == Direction::L) {
                     transform.pos_x -= 25;
+                    transform.direction = Direction::L;
                 } else if (weapon_owner_transform->direction == Direction::U) {
                     transform.pos_y += 25;
+                    transform.direction = Direction::U;
                 } else if (weapon_owner_transform->direction == Direction::D) {
                     transform.pos_y -= 25;
+                    transform.direction = Direction::D;
                 } else if (weapon_owner_transform->direction == Direction::RU) {
                     transform.pos_x += 25;
                     transform.pos_y += 25;
+                    transform.direction = Direction::RU;
                 } else if (weapon_owner_transform->direction == Direction::RD) {
                     transform.pos_x += 25;
                     transform.pos_y -= 25;
+                    transform.direction = Direction::RD;
                 } else if (weapon_owner_transform->direction == Direction::LU) {
                     transform.pos_x -= 25;
                     transform.pos_y += 25;
+                    transform.direction = Direction::LU;
                 } else if (weapon_owner_transform->direction == Direction::LD) {
                     transform.pos_x -= 25;
                     transform.pos_y -= 25;
+                    transform.direction = Direction::LD;
                 } 
             } else {
                 sprite.visible = false;
             } 
+            sprite.dst.x = transform.pos_x;
+            sprite.dst.y = transform.pos_y;
         });
-    }
+    }  
 };
-
-
-// Uint32 now = SDL_GetTicks();
-
-        // // This view allows us to quickly check if an entity has a hitpoints_component
-        // auto view_entities_with_hitpoints = reg.view<hitpoints_component>();
-        // auto view_weapons_entities = reg.view<weapon_component>();
-        // auto view_characters = reg.view<weapon_component>();
-
-        // // Loop through Entities that can do damage!
-        // auto view_colliding_entities = reg.view<collision_detection_component, combat_component>();
-        // view_colliding_entities.each([&](collision_detection_component &collision_detection, combat_component &damage) {
-            
-        //     if (!damage.attacking) {
-        //         return;
-        //     }
-
-        //     if (collision_detection.collided_entities.empty()) {
-        //         return;
-        //     }
-
-        //     // loop through the collided entities and check for weapons then work out how much damage they do
-        //     for (const entt::entity collided_entity : collision_detection.collided_entities) {
-        //             // Only do something if character has collided with a weapon
-        //             if (!view_weapons_entities.contains(collided_entity)) { continue; }
-
-        //             auto weapon_target = reg.try_get<weapon_component>(collided_entity);
-        //             if (weapon_target) {
-        //                 // Get the owner of the weapon
-        //             }
-
-        //             hitpoints_component &target_hitpoints = view_entities_with_hitpoints.get<hitpoints_component>(collided_entity);
-        //             target_hitpoints.damage_taken_this_turn += combat.damage_per_hit;
-        //         }
-
-
-        //     if (damage.attack_scheduled) {
-        //         for (const entt::entity collided_entity : collision_detection.collided_entities) {
-        //             // Check if the collided entity has a hitpoints_component
-        //             if (!view_entities_with_hitpoints.contains(collided_entity)) { continue; }
-
-        //             hitpoints_component &target_hitpoints = view_entities_with_hitpoints.get<hitpoints_component>(collided_entity);
-        //             target_hitpoints.damage_taken_this_turn += damage.damage_per_hit;
-        //         }
-        //     }
-        // });

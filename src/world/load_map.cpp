@@ -44,10 +44,12 @@ void load_map(const std::string& filename, entt::registry& registry, SDL_Rendere
                 sprite.visible = true;
                 sprite.label = std::string("TERRAIN");
                 // The image being used for the sprite
-                sprite.src.x = 0;
-                sprite.src.y = 0;
-                sprite.src.w = 200;
-                sprite.src.h = 200;
+                sprite.src_w = 250;
+                sprite.src_h = 250;
+                sprite.src.x = 20;
+                sprite.src.y = 20;
+                sprite.src.w = 250;
+                sprite.src.h = 250;
 
                 sprite.dst.x = col * tile_width;
                 sprite.dst.y = row * tile_height;
@@ -60,11 +62,11 @@ void load_map(const std::string& filename, entt::registry& registry, SDL_Rendere
 
                 // Load texture based on tile type
                 if (tile == 'd') {
-                    sprite.texture = IMG_LoadTexture(renderer, "assets/images/dirt.jpeg");
+                    sprite.texture = IMG_LoadTexture(renderer, "assets/images/wall.jpg");
                     registry.emplace<collidable_component>(entity, true);
                     std::cout << "Loaded DIRT" << std::endl;
                 } else if (tile == 'g') {
-                    sprite.texture = IMG_LoadTexture(renderer, "assets/images/grass.png");
+                    sprite.texture = IMG_LoadTexture(renderer, "assets/images/brick.jpg");
                     std::cout << "Loaded GRASS" << std::endl;
                 }
 

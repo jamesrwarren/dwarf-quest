@@ -114,8 +114,8 @@ struct path_finding_system
             collidable_positions.insert(get_index(sprite.grid_x, sprite.grid_y));
         });
         bool updated_path_this_frame = false;
-        auto view_path_finding = reg.view<sprite_component, transform_component, path_finding_component, targetting_component>();
-        view_path_finding.each([&](sprite_component &sprite, transform_component &transform, path_finding_component &path_finding, targetting_component &aquire_target) {           
+        auto view_path_finding = reg.view<sprite_component, transform_component, path_finding_component, targetting_component, combat_component>();
+        view_path_finding.each([&](sprite_component &sprite, transform_component &transform, path_finding_component &path_finding, targetting_component &aquire_target, combat_component &combat) {           
             entt::entity target_entity = aquire_target.target_entt;
 
             // Check if the target entity has a sprite_component
@@ -141,6 +141,9 @@ struct path_finding_system
                 if (std::size(path_finding.path) < 3) {
                     aquire_target.target_x = aquire_target.player_x;
                     aquire_target.target_y = aquire_target.player_y;
+                    if (std::size(path_finding.path) < 2) {
+                        combat.attacking = true;
+                    }
                 } else {
                     aquire_target.target_x = path_finding.path[1].grid_x * GameConfig::instance().grid_cell_width;
                     aquire_target.target_y = path_finding.path[1].grid_y * GameConfig::instance().grid_cell_height;
