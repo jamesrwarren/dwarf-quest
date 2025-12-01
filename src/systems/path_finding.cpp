@@ -141,6 +141,7 @@ struct path_finding_system
                 if (std::size(path_finding.path) < 3) {
                     aquire_target.target_x = aquire_target.player_x;
                     aquire_target.target_y = aquire_target.player_y;
+                    // Attack when closing in on player
                     if (std::size(path_finding.path) < 2) {
                         combat.attacking = true;
                     }

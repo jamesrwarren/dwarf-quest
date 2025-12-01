@@ -56,40 +56,53 @@ void check_collisions (
     bool &y_collision, 
     bool &all_x_collisions, 
     bool &all_y_collisions, 
-    collision_detection_component &collision_entity
+    collision_detection_component &collision_entity,
+    int entity_proposed_min_x,
+    int entity_proposed_min_y,
+    int sign_x,
+    int sign_y
 ) 
 {
-    std::cout << "Check Collison Between: (" << sprite_entity.label << " and " << sprite_target.label << ")" << "\n";
-    std::cout << "SOURCE: (" << entity_proposed_x << "," << entity_proposed_y << ") - (" << sprite_entity.dst.w << "," << sprite_entity.dst.h << ") TARGET: (" << sprite_target.dst.x << "," << sprite_target.dst.y << ") - (" << sprite_target.dst.w << "," << sprite_target.dst.h << ")" << "\n";
+    // std::cout << "Check Collison Between: (" << sprite_entity.label << " and " << sprite_target.label << ")" << "\n";
+    // std::cout << "SOURCE: (" << entity_proposed_x << "," << entity_proposed_y << ") - (" << sprite_entity.dst.w << "," << sprite_entity.dst.h << ") TARGET: (" << sprite_target.dst.x << "," << sprite_target.dst.y << ") - (" << sprite_target.dst.w << "," << sprite_target.dst.h << ")" << "\n";
     if (s_collidable.checkCollision(
         entity_proposed_x, entity_proposed_y, sprite_entity.dst.w, sprite_entity.dst.h, 
         sprite_target.dst.x, sprite_target.dst.y, sprite_target.dst.w, sprite_target.dst.h))
     {
+        transform_entity.vel_x = sign_x;
+        transform_entity.vel_y = sign_y;
+
+        if (s_collidable.checkCollision(
+            entity_proposed_min_x, entity_proposed_min_y, sprite_entity.dst.w, sprite_entity.dst.h, 
+            sprite_target.dst.x, sprite_target.dst.y, sprite_target.dst.w, sprite_target.dst.h))
+        {
         // std::cout << "Collison Between: (" << sprite_entity.label << " and " << sprite_target.label << ")" << "\n";
         // Add to colliding_entity collided list if visible
-        if (sprite_target.visible) {
-            collision_entity.collided_entities.push_back(entt_target);       
-        }
         
-        // Check separately for x and y collisions if moving diagonally
-        if (transform_entity.vel_x != 0 && transform_entity.vel_y != 0) {
-            x_collision = s_collidable.checkCollision(
-                entity_proposed_x, transform_entity.pos_y, sprite_entity.dst.w, sprite_entity.dst.h, 
-                sprite_target.dst.x, sprite_target.dst.y, sprite_target.dst.w, sprite_target.dst.h
-            );
-            y_collision = s_collidable.checkCollision(
-                transform_entity.pos_x, entity_proposed_y, sprite_entity.dst.w, sprite_entity.dst.h, 
-                sprite_target.dst.x, sprite_target.dst.y, sprite_target.dst.w, sprite_target.dst.h
-            );
-        }
-        collision_detected = true;
+            if (sprite_target.visible) {
+                collision_entity.collided_entities.push_back(entt_target);       
+            }
+            
+            // Check separately for x and y collisions if moving diagonally
+            if (transform_entity.vel_x != 0 && transform_entity.vel_y != 0) {
+                x_collision = s_collidable.checkCollision(
+                    entity_proposed_min_x, transform_entity.pos_y, sprite_entity.dst.w, sprite_entity.dst.h, 
+                    sprite_target.dst.x, sprite_target.dst.y, sprite_target.dst.w, sprite_target.dst.h
+                );
+                y_collision = s_collidable.checkCollision(
+                    transform_entity.pos_x, entity_proposed_min_y, sprite_entity.dst.w, sprite_entity.dst.h, 
+                    sprite_target.dst.x, sprite_target.dst.y, sprite_target.dst.w, sprite_target.dst.h
+                );
+            }
+            collision_detected = true;
 
-        if (all_x_collisions || x_collision) {
-            all_x_collisions = true;
-        }
+            if (all_x_collisions || x_collision) {
+                all_x_collisions = true;
+            }
 
-        if (all_y_collisions || y_collision) {
-            all_y_collisions = true;
+            if (all_y_collisions || y_collision) {
+                all_y_collisions = true;
+            }
         }
     }
 }
@@ -111,7 +124,11 @@ void process_by_grid_map (
     bool& all_y_collisions,
     collision_detection_component& collision_entity,
     entt::entity entity,
-    bool process_static
+    bool process_static,
+    int entity_proposed_min_x,
+    int entity_proposed_min_y,
+    int sign_x,
+    int sign_y
 ) {
     // TODO - add this to a global thing so we're not writing it on each loop
     auto view_all_collidables = reg.view<sprite_component, collidable_component>();
@@ -153,7 +170,11 @@ void process_by_grid_map (
             y_collision, 
             all_x_collisions, 
             all_y_collisions, 
-            collision_entity
+            collision_entity,
+            entity_proposed_min_x,
+            entity_proposed_min_y,
+            sign_x,
+            sign_y
         );
     });
 }
@@ -193,6 +214,12 @@ struct collision_system
             int entity_proposed_x = transform_entity.pos_x + transform_entity.vel_x;
             int entity_proposed_y = transform_entity.pos_y + transform_entity.vel_y;
 
+            // these are secondary proposed values assuming we just move 1 pixel instead of vel pixels
+            int sign_x = (transform_entity.vel_x > 0) - (transform_entity.vel_x < 0);
+            int entity_proposed_min_x = transform_entity.pos_x + sign_x;
+            int sign_y = (transform_entity.vel_y > 0) - (transform_entity.vel_y < 0);
+            int entity_proposed_min_y = transform_entity.pos_y + sign_y;
+
             bool collision_detected = false;
             bool all_x_collisions = false, all_y_collisions = false;
             bool x_collision, y_collision = true;
@@ -222,7 +249,11 @@ struct collision_system
                         all_y_collisions,
                         collision_entity,
                         entity,
-                        false
+                        false,
+                        entity_proposed_min_x,
+                        entity_proposed_min_y,
+                        sign_x,
+                        sign_y
                     );
 
                     // ============= Process STATIC entities =============
@@ -243,7 +274,11 @@ struct collision_system
                         all_y_collisions,
                         collision_entity,
                         entity,
-                        true
+                        true,
+                        entity_proposed_min_x,
+                        entity_proposed_min_y,
+                        sign_x,
+                        sign_y
                     );
                 }
             }

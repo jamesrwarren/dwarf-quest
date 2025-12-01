@@ -19,10 +19,10 @@ struct movement_system
         auto view_player = reg.view<transform_component, combat_component, player_component>();
         view_player.each([&keys, &reg](transform_component &transform, combat_component &combat){
             // Apply movement based on input
-            if (keys[SDL_SCANCODE_A]) { transform.vel_x = -1; } 
-            if (keys[SDL_SCANCODE_S]) { transform.vel_y = 1; }
-            if (keys[SDL_SCANCODE_W]) { transform.vel_y = -1; }
-            if (keys[SDL_SCANCODE_D]) { transform.vel_x = 1; }
+            if (keys[SDL_SCANCODE_A]) { transform.vel_x = -transform.speed; } 
+            if (keys[SDL_SCANCODE_S]) { transform.vel_y = transform.speed; }
+            if (keys[SDL_SCANCODE_W]) { transform.vel_y = -transform.speed; }
+            if (keys[SDL_SCANCODE_D]) { transform.vel_x = transform.speed; }
             if (keys[SDL_SCANCODE_L]) { combat.attacking = true; }
             if (!keys[SDL_SCANCODE_L]) { combat.attacking = false; }
             if (!keys[SDL_SCANCODE_A] && !keys[SDL_SCANCODE_D]) { transform.vel_x = 0; }
@@ -49,24 +49,36 @@ struct movement_system
     void update_directions(entt::registry& reg)
     {
         auto view_transform = reg.view<transform_component>();
-        view_transform.each([&](transform_component &transform) {
+        view_transform.each([](transform_component& transform) {
 
-            if (transform.vel_x > 0 && transform.vel_y == 0) {
+            const int vx = transform.vel_x;
+            const int vy = transform.vel_y;
+
+            if (vx == 0 && vy == 0) {
+                return; // No movement, keep current direction
+            }
+
+            const bool moving_right = vx > 0;
+            const bool moving_left  = vx < 0;
+            const bool moving_up    = vy > 0;
+            const bool moving_down  = vy < 0;
+
+            if (moving_right && !moving_up && !moving_down) {
                 transform.direction = Direction::R;
-            } else if (transform.vel_x > 0 && transform.vel_y > 0) {
+            } else if (moving_right && moving_up) {
                 transform.direction = Direction::RU;
-            } else if (transform.vel_x < 0 && transform.vel_y == 0) {
-                transform.direction = Direction::L;
-            } else if (transform.vel_x < 0 && transform.vel_y > 0) {
-                transform.direction = Direction::LU;
-            } else if (transform.vel_y > 0 && transform.vel_x == 0) {
-                transform.direction = Direction::U;
-            } else if (transform.vel_y < 0 && transform.vel_x == 0) {
-                transform.direction = Direction::D;
-            } else if (transform.vel_x < 0 && transform.vel_y < 0) {
-                transform.direction = Direction::LD;
-            } else if (transform.vel_x > 0 && transform.vel_y < 0) {
+            } else if (moving_right && moving_down) {
                 transform.direction = Direction::RD;
+            } else if (moving_left && !moving_up && !moving_down) {
+                transform.direction = Direction::L;
+            } else if (moving_left && moving_up) {
+                transform.direction = Direction::LU;
+            } else if (moving_left && moving_down) {
+                transform.direction = Direction::LD;
+            } else if (!moving_left && !moving_right && moving_up) {
+                transform.direction = Direction::U;
+            } else if (!moving_left && !moving_right && moving_down) {
+                transform.direction = Direction::D;
             }
         });
     }

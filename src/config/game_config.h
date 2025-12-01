@@ -8,15 +8,15 @@ struct GameConfig {
         static GameConfig instance;
         return instance;
     }
+    const int grid_cell_height = 45;
+    const int grid_cell_width = 45;
 
-    // Configuration settings as public members
-    std::size_t screen_height = 800;
-    std::size_t screen_width = 1200;
-    
     const int num_rows = 20;
     const int num_columns = 30;
-    const int grid_cell_height = screen_height / num_rows;
-    const int grid_cell_width = screen_width / num_columns;
+    // Configuration settings as public members
+    std::size_t screen_height = grid_cell_height * num_rows;
+    std::size_t screen_width = grid_cell_width * num_columns;
+
     const int target_fps = 20;               
     const int frame_delay = 1000 / target_fps;
 

@@ -20,8 +20,9 @@ struct combat_system
         auto view_damaging_entities = reg.view<damage_component>();
 
         // Loop through Entities that can do damage!
-        auto view_character_entities = reg.view<collision_detection_component, hitpoints_component>();
-        view_character_entities.each([&](collision_detection_component &collision_detection, hitpoints_component &hitpoints) {
+        auto view_character_entities = reg.view<collision_detection_component, hitpoints_component, transform_component>();
+        view_character_entities.each([&](collision_detection_component &collision_detection, hitpoints_component &hitpoints, transform_component &transform)
+        {
 
             if (collision_detection.collided_entities.empty()) {
                 return;
@@ -33,15 +34,41 @@ struct combat_system
                     // Only do something if character has collided with a thing that does damage
                     if (!view_damaging_entities.contains(collided_entity)) { continue; }
 
-
                     auto damage_entity = reg.try_get<damage_component>(collided_entity);
+                    
+                    // Only do something if it's not a friendly type
+                    if (damage_entity->type == collision_detection.type) { continue; }
+                    
                     if (damage_entity && damage_entity->apply_damage) {
                         hitpoints.damage_taken_this_turn += damage_entity->damage_per_hit;
                         damage_entity->apply_damage = false;
+                        if (damage_entity->stun) {
+                            if (!hitpoints.stunned) {
+                                hitpoints.stunned = true;
+                                hitpoints.stunned_frames_remaining = hitpoints.stunned_frames;
+                            }
+                        }
                     }
-
                 }
-        });        
+            }
+        );        
+    }
+
+    void update_character_statuses(entt::registry& reg) {
+        auto view_character_entities = reg.view<hitpoints_component, transform_component>();
+        view_character_entities.each([&](hitpoints_component &hitpoints, transform_component &transform)
+        {
+            if (hitpoints.stunned) {
+                if (hitpoints.stunned_frames_remaining > 0) {
+                    hitpoints.stunned_frames_remaining -= 1;
+                    // std::cout << "STUNNED: " << hitpoints.stunned_frames_remaining << "\n";
+                    transform.vel_x = 0;
+                    transform.vel_y = 0;
+                } else {
+                    hitpoints.stunned = false;
+                }
+            }
+        });
     }
 
     void update_weapon_states(entt::registry& reg)
@@ -81,42 +108,33 @@ struct combat_system
             
             // std::cout << "ElapsedTime: " << weapon_owner_damage->elapsed_time << " LastStrike: " << weapon_owner_damage->last_strike << " StrikeCD: " << weapon_owner_damage->strike_cooldown <<  "\n";
 
-            if (weapon_owner_combat->attack_frames_remaining > 0) { 
+            if (weapon_owner_combat->attack_frames_remaining > 0) {
                 sprite.visible = true;
                 weapon_owner_combat->attack_frames_remaining -= 1;
 
-                if (weapon_owner_transform->direction == Direction::R) {
-                    transform.pos_x += 25;
-                    transform.direction = Direction::R;
-                } else if (weapon_owner_transform->direction == Direction::L) {
-                    transform.pos_x -= 25;
-                    transform.direction = Direction::L;
-                } else if (weapon_owner_transform->direction == Direction::U) {
-                    transform.pos_y += 25;
-                    transform.direction = Direction::U;
-                } else if (weapon_owner_transform->direction == Direction::D) {
-                    transform.pos_y -= 25;
-                    transform.direction = Direction::D;
-                } else if (weapon_owner_transform->direction == Direction::RU) {
-                    transform.pos_x += 25;
-                    transform.pos_y += 25;
-                    transform.direction = Direction::RU;
-                } else if (weapon_owner_transform->direction == Direction::RD) {
-                    transform.pos_x += 25;
-                    transform.pos_y -= 25;
-                    transform.direction = Direction::RD;
-                } else if (weapon_owner_transform->direction == Direction::LU) {
-                    transform.pos_x -= 25;
-                    transform.pos_y += 25;
-                    transform.direction = Direction::LU;
-                } else if (weapon_owner_transform->direction == Direction::LD) {
-                    transform.pos_x -= 25;
-                    transform.pos_y -= 25;
-                    transform.direction = Direction::LD;
-                } 
+                const Direction dir = weapon_owner_transform->direction;
+                transform.direction = dir;
+
+                int dx = 0;
+                int dy = 0;
+
+                switch (dir) {
+                    case Direction::R:  dx = +25; break;
+                    case Direction::L:  dx = -25; break;
+                    case Direction::U:  dy = +25; break;
+                    case Direction::D:  dy = -25; break;
+                    case Direction::RU: dx = +25; dy = +25; break;
+                    case Direction::RD: dx = +25; dy = -25; break;
+                    case Direction::LU: dx = -25; dy = +25; break;
+                    case Direction::LD: dx = -25; dy = -25; break;
+                    default: break;
+                }
+
+                transform.pos_x += dx;
+                transform.pos_y += dy;
             } else {
                 sprite.visible = false;
-            } 
+            }
             sprite.dst.x = transform.pos_x;
             sprite.dst.y = transform.pos_y;
         });

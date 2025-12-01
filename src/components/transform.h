@@ -17,5 +17,6 @@ enum class Direction {
 struct transform_component{
     int pos_x, pos_y;   // Screen position
     int vel_x, vel_y;   // Velocity
-    Direction direction;
+    int speed = 1;
+    Direction direction;  
 };

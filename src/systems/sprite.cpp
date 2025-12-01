@@ -94,13 +94,6 @@ struct sprite_system
             } 
 
             SDL_RenderCopyEx(renderer, sprite.texture, &sprite.src, &sprite.dst, angle, nullptr, SDL_FLIP_NONE);
-
-            // SDL_RenderCopy(
-            //     renderer, 
-            //     sprite.texture, 
-            //     &sprite.src, 
-            //     &sprite.dst
-            // );
         });
     }
 

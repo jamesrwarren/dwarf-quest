@@ -28,6 +28,8 @@ void load_map(const std::string& filename, entt::registry& registry, SDL_Rendere
     int row = 0;
 
     sprite_system sprite_system_inst;
+    SDL_Texture* wall_texture = IMG_LoadTexture(renderer, "assets/images/wall.jpg");
+    SDL_Texture* brick_texture = IMG_LoadTexture(renderer, "assets/images/brick.jpg");
 
     std::string line;
     while (std::getline(map_file, line)) {
@@ -62,11 +64,11 @@ void load_map(const std::string& filename, entt::registry& registry, SDL_Rendere
 
                 // Load texture based on tile type
                 if (tile == 'd') {
-                    sprite.texture = IMG_LoadTexture(renderer, "assets/images/wall.jpg");
+                    sprite.texture = wall_texture;
                     registry.emplace<collidable_component>(entity, true);
                     std::cout << "Loaded DIRT" << std::endl;
                 } else if (tile == 'g') {
-                    sprite.texture = IMG_LoadTexture(renderer, "assets/images/brick.jpg");
+                    sprite.texture = brick_texture;
                     std::cout << "Loaded GRASS" << std::endl;
                 }
 

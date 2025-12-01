@@ -17,6 +17,7 @@
 #include "../systems/path_finding.cpp"
 #include "../systems/sprite.cpp"
 #include "../systems/sprite_animation.cpp"
+#include "../systems/item_retrieval.cpp"
 #include "../systems/targetting.cpp"
 #include "../systems/transform.cpp"
 #include "load_map.cpp"
@@ -80,7 +81,7 @@ class game
 
         void update()
         {  
-            m_performance_logging_system.start();
+            // m_performance_logging_system.start();
             
             // Find out where everything is heading this frame
             m_movement_system.update_players(m_registry);
@@ -89,6 +90,7 @@ class game
             m_movement_system.update_enemies(m_registry);
             m_movement_system.update_directions(m_registry);
             m_sprite_animation_system.update(m_registry);
+            m_sprite_animation_system.update_scenery_animation(m_registry);
 
             // Set weapon coords to be same as the weapon owner
             m_transform_system.update_weapons(m_registry);
@@ -101,7 +103,17 @@ class game
             m_collision_system.update(m_registry);  
             m_combat_system.update(m_registry);         
             m_damage_system.update(m_registry);
+            
+            // Handles application of various statuses
+            m_combat_system.update_character_statuses(m_registry);
 
+            // Handles collection of things
+            m_item_retrieval_system.update(m_registry);
+            
+            // Handles removal of dead characters
+            m_health_system.update(m_registry);
+            m_health_system.update_item_clear_up(m_registry);
+            
             // Finalise positions and animation frames of everything
             m_transform_system.update(m_registry);  
             
@@ -119,10 +131,10 @@ class game
             m_sprite_system.render_layer_two(m_registry, m_renderer);
             m_damage_system.render_life_bars(m_registry, m_renderer);
             m_damage_system.render_cooldowns(m_registry, m_renderer);
-            m_visual_logging_system.render(m_registry, m_renderer);
+            // m_visual_logging_system.render(m_registry, m_renderer);
             SDL_RenderPresent(m_renderer);
 
-            m_performance_logging_system.stop();
+            // m_performance_logging_system.stop();
         }
 
     private:
@@ -141,8 +153,10 @@ class game
         targetting_system m_targetting_system;
         movement_system m_movement_system;
         damage_system m_damage_system;
+        health_system m_health_system;
         combat_system m_combat_system;
         collision_system m_collision_system;
+        item_retrieval_system m_item_retrieval_system; 
         logging_system m_logging_system;
         visual_logging_system m_visual_logging_system;
         performance_logging_system m_performance_logging_system;
